@@ -1,8 +1,13 @@
 name: Publish
 
+# Publishing is manual for now: the Marketplace answers 401 to the OIDC token
+# exchange for the publisher, so every run on main fails at the last step.
+# Run it from the Actions tab. Once the Marketplace trusts this repository, or a
+# token is stored as a secret, restore the trigger:
+#   push:
+#     branches: [main]
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
