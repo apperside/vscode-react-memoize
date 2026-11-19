@@ -2,7 +2,7 @@ name: Pages
 
 on:
   push:
-    branches: [extract-usememo-usecallback]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
