@@ -1,7 +1,7 @@
 {
   "name": "vscode-react-memoize",
-  "displayName": "React Easy Memoize",
-  "version": "0.0.11",
+  "displayName": "vscode-react-memoize",
+  "version": "0.0.12",
   "description": "Instantly transform variables and function in useMemo and useCallback with tracked dependencies array",
   "categories": [
     "Other"
@@ -38,7 +38,7 @@
     "commands": [
       {
         "command": "reactMemoize.showLog",
-        "title": "React Easy Memoize: Show Debug Log"
+        "title": "vscode-react-memoize: Show Debug Log"
       }
     ]
   },

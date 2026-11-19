@@ -1,5 +1,5 @@
 ---
-name: React Easy Memoize
+name: vscode-react-memoize
 description: A customs declaration form on a saturated green ground, where the dependency array is the box the tool fills in for you.
 colors:
   customs-green: "#0b6e4f"
@@ -104,7 +104,7 @@ components:
     padding: "0.15rem 0.9rem 0.05rem"
 ---
 
-# Design System: React Easy Memoize
+# Design System: vscode-react-memoize
 
 ## Overview
 

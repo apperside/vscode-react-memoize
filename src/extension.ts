@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext): void {
         } catch (error) {
           log.error("Extract failed with an unexpected error", error);
           void vscode.window.showErrorMessage(
-            "React Easy Memoize: extract failed. See the 'React Easy Memoize' output channel.",
+            "vscode-react-memoize: extract failed. See the 'vscode-react-memoize' output channel.",
           );
         }
       },
@@ -185,7 +185,7 @@ async function runExtract(
     }
     void vscode.window
       .showInformationMessage(
-        "React Easy Memoize: nothing can be extracted at this position.",
+        "vscode-react-memoize: nothing can be extracted at this position.",
         "Show log",
       )
       .then((choice) => {

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 let channel: vscode.LogOutputChannel | undefined;
 
 export function createLog(): vscode.LogOutputChannel {
-  channel ??= vscode.window.createOutputChannel("React Easy Memoize", { log: true });
+  channel ??= vscode.window.createOutputChannel("vscode-react-memoize", { log: true });
   return channel;
 }
 

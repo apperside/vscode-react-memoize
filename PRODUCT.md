@@ -16,7 +16,7 @@ React developers who write function components and custom hooks in VS Code, in J
 
 ## Product Purpose
 
-A VS Code refactor named "React Easy Memoize" (repository `vscode-react-memoize`). With the cursor on a variable or function inside a component, the lightbulb offers "Extract in useMemo" or "Extract in useCallback". It wraps the code and fills the dependency array the way `react-hooks/exhaustive-deps` would. Success for the page: a visitor understands this within the first screen, then installs.
+A VS Code refactor named "vscode-react-memoize" (repository `vscode-react-memoize`). With the cursor on a variable or function inside a component, the lightbulb offers "Extract in useMemo" or "Extract in useCallback". It wraps the code and fills the dependency array the way `react-hooks/exhaustive-deps` would. Success for the page: a visitor understands this within the first screen, then installs.
 
 ## Positioning
 
@@ -32,7 +32,7 @@ Used inside the editor, through the lightbulb (`Cmd+.` on macOS, `Ctrl+.` elsewh
 - Cases supported: `const`/`let` bindings, destructuring, function declarations, split of multi-binding statements, inline props and arrow bodies without a block (committed in `e3f17a9`).
 - Not offered inside conditionals, after an early return, in nested helpers, for `var`, generators, overloads, classes, or code that already calls a hook.
 - Requires Visual Studio Code 1.86 or newer (package.json `engines`; the README still says 1.85).
-- Name: displayName "React Easy Memoize", package `vscode-react-memoize`, publisher `apperside`, MIT license.
+- Name: displayName "vscode-react-memoize", package `vscode-react-memoize`, publisher `apperside`, MIT license.
 - Open decision: the exact Marketplace URL is not confirmed. The identifier would be `apperside.vscode-react-memoize`; do not invent a listing URL or install counts.
 
 ## Brand Commitments
