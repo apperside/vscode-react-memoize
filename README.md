@@ -1,10 +1,20 @@
-# Extract in useMemo and useCallback
+# vscode-react-memoize
+
+Extract in `useMemo` and `useCallback`, in one click, with the dependency array already filled in.
 
 Project home: https://apperside.github.io/vscode-react-memoize/
 
-A refactor for React. Put the cursor on a variable or function inside a component, and wrap it in `useMemo` or `useCallback` with the dependency array `react-hooks/exhaustive-deps` would require.
+A refactor for React. Put the cursor on a variable, a function, or a prop written inline in your JSX, and wrap it in `useMemo` or `useCallback` with the dependency array `react-hooks/exhaustive-deps` would require.
 
 Works in JavaScript, JSX, TypeScript, and TSX.
+
+## Install
+
+Search for **vscode-react-memoize** in the Extensions view, or run:
+
+```bash
+code --install-extension apperside.vscode-react-memoize
+```
 
 ![The lightbulb wraps an inline handler in useCallback](docs/demo.gif)
 
@@ -17,7 +27,7 @@ function Profile({ user, onSelect }: Props) {
 }
 ```
 
-Cursor on `lepo create label`, then **Extract in useMemo**:
+Cursor on `label`, then **Extract in useMemo**:
 
 ```tsx
 import { useMemo } from "react";
@@ -50,6 +60,29 @@ The same rules apply in custom hooks (`useSomething`) and in components passed t
 The extension picks the hook from the declaration. A function becomes `useCallback`. Anything else becomes `useMemo`. You only see the action that applies.
 
 `useMemo` or `useCallback` is added to the existing `react` import. If the file imports `React` as a namespace, the call is written `React.useMemo` or `React.useCallback` and the import is left alone. If `react` is not imported yet, a named import is inserted.
+
+## Inline props
+
+An arrow function, an object, or an array written straight into a JSX prop is a new value on every render. Put the cursor on the value and the same lightbulb lifts it above the `return` as a named hook. The name comes from the prop and opens for renaming.
+
+```tsx
+function SaveBar({ id, save }: Props) {
+  return <Button onClick={() => save(id)} />;
+}
+```
+
+becomes, with **Extract in useCallback**:
+
+```tsx
+function SaveBar({ id, save }: Props) {
+  const onClick = useCallback(() => save(id), [save, id]);
+  return <Button onClick={onClick} />;
+}
+```
+
+In TypeScript, the parameter types of an extracted handler are read from the TypeScript language service. If a type is not imported in the file yet, the extension asks TypeScript for an import fix. When none is offered, add the import by hand.
+
+An inline prop can also be lifted out of a plain callback, such as a `map`, as long as it reads nothing declared inside that callback.
 
 ## What you can extract
 
@@ -91,6 +124,14 @@ It is also skipped when:
 - the declaration is `var`, a generator, or a function overload
 - the cursor is in a class, or in a function that is not a component or a hook
 
+An inline prop is not offered inside a `useMemo` or `useCallback` callback, where it is already recreated only when that hook reruns. It is not offered either when it reads a value declared inside a nested callback, such as the parameter of a `map`.
+
+The lightbulb checks the syntax tree before it offers an action, so an action you see is one the extension can carry out. When an extract finds nothing, a notification says so and offers the log.
+
+## Troubleshooting
+
+The extension writes what it does to the **vscode-react-memoize** output channel: the file and position of each request, what it found, the edits it applied, and what TypeScript answered when a type import could not be added. Open it from **View → Output**, or run **vscode-react-memoize: Show Debug Log**. For more detail, set the channel to Debug from the gear in the Output panel, or with **Developer: Set Log Level…**.
+
 ## Requirements
 
 Visual Studio Code 1.86 or newer.
@@ -105,7 +146,7 @@ npm run fmt:check
 npm run compile
 ```
 
-`npm run compile` writes the extension to `out/`. Launch an Extension Development Host with this folder as the extension path to try a change.
+`npm run package` builds the `.vsix`. `npm run compile` writes the extension to `out/`. Launch an Extension Development Host with this folder as the extension path to try a change.
 
 ## Support
 

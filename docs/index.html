@@ -209,6 +209,7 @@
       }
 
       .hero {
+        position: relative;
         padding: 1.2rem 0 2.8rem;
       }
 
@@ -297,6 +298,44 @@
         display: inline-block;
         padding: 0.75rem 1.4rem 0.65rem;
         font-size: 2rem;
+      }
+
+      .hero .support {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-top: 1.1rem;
+        padding: 0.6rem 1.1rem 0.5rem;
+        border: 3px solid #fff;
+        color: #fff;
+        font: 900 1.5rem / 1 var(--display);
+        letter-spacing: 0.03em;
+        text-decoration: none;
+        text-transform: uppercase;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease;
+      }
+      .hero .support svg {
+        width: 1.3rem;
+        height: 1.3rem;
+        flex: none;
+      }
+      .hero .support:hover {
+        background: #fff;
+        color: var(--ink);
+      }
+      .hero .support:focus-visible {
+        outline-color: #fff;
+        box-shadow: none;
+      }
+      @media (min-width: 1100px) {
+        .hero .support {
+          position: absolute;
+          top: 9.5rem;
+          right: 0;
+          margin-top: 0;
+        }
       }
 
       .hero .cmd {
@@ -1205,6 +1244,10 @@
             <button type="button" data-copy>Copy</button>
           </div>
         </div>
+        <a class="support" href="https://ko-fi.com/apperside">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9zM16 10h2a3 3 0 0 1 0 6h-2M8 2.5v3M12 2.5v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" /></svg>
+          Support me
+        </a>
       </header>
 
       <main>

@@ -1,7 +1,7 @@
 {
   "name": "vscode-react-memoize",
   "displayName": "vscode-react-memoize",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "Instantly transform variables and function in useMemo and useCallback with tracked dependencies array",
   "categories": [
     "Other"
