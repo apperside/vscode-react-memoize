@@ -8,6 +8,7 @@ import {
 } from "./callbackTypes.js";
 import { findExtractTarget, isInlineExtract, type Selection } from "./findExtractTarget.js";
 import { parseSource } from "./parseSource.js";
+import { log } from "./log.js";
 
 export async function inferParameterTypes(
   document: vscode.TextDocument,
@@ -15,17 +16,26 @@ export async function inferParameterTypes(
   scriptKind: ts.ScriptKind,
   token: vscode.CancellationToken,
 ): Promise<InferredCallback | undefined> {
-  if (document.uri.scheme !== "file" || token.isCancellationRequested) return undefined;
+  if (document.uri.scheme !== "file" || token.isCancellationRequested) {
+    log.debug(`Skipping type inference (scheme=${document.uri.scheme})`);
+    return undefined;
+  }
   const sourceFile = parseSource(document.getText(), scriptKind);
   const target = findExtractTarget(sourceFile, selection);
   if (!target || !isInlineExtract(target) || target.hook !== "useCallback") return undefined;
   if (!callbackNeedsTypes(target.expression)) return undefined;
   const offset = callbackQuickInfoOffset(sourceFile, target.expression);
-  if (offset === undefined) return undefined;
+  if (offset === undefined) {
+    log.debug("No quickinfo offset for the callback");
+    return undefined;
+  }
   const position = document.positionAt(offset);
   const display = await quickInfo(document, position);
+  log.info(`tsserver quickinfo: ${display === undefined ? "<none>" : JSON.stringify(display)}`);
   if (!display || token.isCancellationRequested) return undefined;
-  return parameterTypesFromSignature(display);
+  const parsed = parameterTypesFromSignature(display);
+  if (!parsed) log.warn("Could not parse parameter types from the quickinfo signature");
+  return parsed;
 }
 
 async function quickInfo(
@@ -43,7 +53,8 @@ async function quickInfo(
       },
     );
     return displayText(result);
-  } catch {
+  } catch (error) {
+    log.error("typescript.tsserverRequest quickinfo failed", error);
     return undefined;
   }
 }

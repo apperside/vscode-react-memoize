@@ -4,6 +4,7 @@ docs/**
 **/*.map
 **/*.ts
 **/*.vsix
+**/*.vsix.zip
 tsconfig.json
 package-lock.json
 .oxlintrc.json
@@ -11,3 +12,7 @@ package-lock.json
 .gitignore
 .vscode/**
 .github/**
+.claude/**
+.impeccable/**
+PRODUCT.md
+DESIGN.md

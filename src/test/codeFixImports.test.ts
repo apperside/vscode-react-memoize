@@ -65,3 +65,26 @@ test("an import code fix becomes a text edit", () => {
     ],
   );
 });
+
+test("a Windows drive letter in a different case still matches the document", () => {
+  const edits = firstImportEdits("c:\\Users\\dev\\Save.tsx", {
+    body: [
+      {
+        fixName: "import",
+        changes: [
+          {
+            fileName: "C:/Users/dev/Save.tsx",
+            textChanges: [
+              {
+                start: { line: 1, offset: 1 },
+                end: { line: 1, offset: 1 },
+                newText: 'import { Row } from "./types";\n',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(edits.length, 1);
+});

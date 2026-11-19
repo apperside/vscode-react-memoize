@@ -93,7 +93,7 @@ It is also skipped when:
 
 ## Requirements
 
-Visual Studio Code 1.85 or newer.
+Visual Studio Code 1.86 or newer.
 
 ## Development
 

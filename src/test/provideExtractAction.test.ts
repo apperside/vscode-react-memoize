@@ -182,3 +182,114 @@ test("a cursor in a plain function returns nothing", () => {
     undefined,
   );
 });
+
+test("an inline handler inside a useMemo callback is not extracted, it is already memoized", () => {
+  const source = `function Table({ save, table }: Props) {
+  const dialog = useMemo(() => <Dialog onSave={(map) => save(map, table)} />, [save, table]);
+  return dialog;
+}
+`;
+  const needle = "(map) => save(map, table)";
+  const start = source.indexOf(needle);
+  assert.equal(
+    provideExtractAction(source, { start, end: start + needle.length }, ts.ScriptKind.TSX),
+    undefined,
+  );
+});
+
+test("the same holds for React.useMemo and useCallback callbacks", () => {
+  for (const hook of ["React.useMemo", "useCallback"]) {
+    const source = `function Table({ save }: Props) {
+  const dialog = ${hook}(() => <Dialog onSave={() => save()} />, [save]);
+  return dialog;
+}
+`;
+    const needle = "() => save()";
+    const start = source.indexOf(needle);
+    assert.equal(
+      provideExtractAction(source, { start, end: start + needle.length }, ts.ScriptKind.TSX),
+      undefined,
+      hook,
+    );
+  }
+});
+
+test("an inline handler in a plain callback that reads nothing from it is hoisted above the statement", () => {
+  const source = `function List({ rows, save }: Props) {
+  const items = rows.map(() => <Row onPick={() => save()} />);
+  return items;
+}
+`;
+  const needle = "() => save()";
+  const start = source.indexOf(needle);
+  const action = provideExtractAction(
+    source,
+    { start, end: start + needle.length },
+    ts.ScriptKind.TSX,
+  );
+  assert.equal(action?.title, "Extract in useCallback");
+  assert.equal(
+    apply(source, action),
+    `import { useCallback } from "react";
+function List({ rows, save }: Props) {
+  const onPick = useCallback(() => save(), [save]);
+  const items = rows.map(() => <Row onPick={onPick} />);
+  return items;
+}
+`,
+  );
+});
+
+test("an inline handler that reads a parameter of the nested callback is refused", () => {
+  const source = `function List({ rows, save }: Props) {
+  const items = useMemo(() => rows.map((row) => <Row onPick={() => save(row.id)} />), [rows]);
+  return items;
+}
+`;
+  const needle = "() => save(row.id)";
+  const start = source.indexOf(needle);
+  assert.equal(
+    provideExtractAction(source, { start, end: start + needle.length }, ts.ScriptKind.TSX),
+    undefined,
+  );
+});
+
+test("an inline handler that reads a local of the nested callback is refused", () => {
+  const source = `function Table({ save }: Props) {
+  const dialog = useMemo(() => {
+    const color = pick();
+    return <Dialog onSave={() => save(color)} />;
+  }, []);
+  return dialog;
+}
+`;
+  const needle = "() => save(color)";
+  const start = source.indexOf(needle);
+  assert.equal(
+    provideExtractAction(source, { start, end: start + needle.length }, ts.ScriptKind.TSX),
+    undefined,
+  );
+});
+
+test("the handler shape from a real table component, inside its useMemo, is not extracted", () => {
+  const source = `const UCCurveDataTable = ({ table, setDialog }: Props) => {
+  const colorDialog = useMemo(
+    () => (
+      <ChangeColorDialog
+        onClose={() => setDialog(undefined)}
+        onSave={(map) => {
+          map.forEach((value, key) => {
+            table.apply(key, value);
+          });
+        }}
+      />
+    ),
+    [table],
+  );
+  return colorDialog;
+};
+`;
+  const needle = "(map) => {";
+  const start = source.indexOf(needle);
+  assert.equal(provideExtractAction(source, { start, end: start }, ts.ScriptKind.TSX), undefined);
+});

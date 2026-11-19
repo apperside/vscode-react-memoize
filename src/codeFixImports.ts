@@ -127,7 +127,12 @@ function responseBody(result: unknown): unknown {
 }
 
 function sameFile(left: string, right: string): boolean {
-  return left.replaceAll("\\", "/") === right.replaceAll("\\", "/");
+  const a = left.replaceAll("\\", "/");
+  const b = right.replaceAll("\\", "/");
+  // Windows paths are case-insensitive, and tsserver and VS Code disagree on the drive letter case.
+  return /^[A-Za-z]:\//.test(a) || /^[A-Za-z]:\//.test(b)
+    ? a.toLowerCase() === b.toLowerCase()
+    : a === b;
 }
 
 function statementEnd(text: string, start: number): number {

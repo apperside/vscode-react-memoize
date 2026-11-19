@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { capturesNestedScope } from "./collectDependencies.js";
 
 export interface Selection {
   start: number;
@@ -187,13 +188,20 @@ function inlineTarget(
   if (isInsideClass(expression) || isGenerator(unwrapExpression(expression))) return undefined;
   if (containsHookCall(expression)) return undefined;
   const reactive = enclosingReactive(expression);
-  if (!reactive?.body || !directlyIn(expression, reactive)) return undefined;
-  const name = freshName(reactive, attribute);
+  if (!reactive?.body) return undefined;
+  // Inside a useMemo or useCallback callback the prop is already recreated only when that hook
+  // reruns, so a second hook around it would add a dependency and no stability.
+  if (insideMemoizedCallback(expression, reactive)) return undefined;
+  // An inline prop inside a callback of the component (a useMemo body, a map) moves up to the
+  // component body, which is only safe when it reads nothing declared in that callback.
+  const outer = outermostFunctionBetween(expression, reactive);
+  const name = freshName(reactive, attribute, outer);
   if (!name) return undefined;
   const unwrapped = unwrapExpression(expression);
   const hook: HookKind = isCallbackInitializer(unwrapped) ? "useCallback" : "useMemo";
+  let target: InlineExtractTarget | undefined;
   if (!ts.isBlock(reactive.body)) {
-    return {
+    target = {
       reactiveFunction: reactive,
       expression,
       name,
@@ -201,17 +209,20 @@ function inlineTarget(
       callback: expression,
       implicitReturn: true,
     };
+  } else {
+    const statement = statementInBody(expression, reactive);
+    if (!statement) return undefined;
+    target = {
+      reactiveFunction: reactive,
+      statement,
+      expression,
+      name,
+      hook,
+      callback: expression,
+    };
   }
-  const statement = statementInBody(expression, reactive);
-  if (!statement) return undefined;
-  return {
-    reactiveFunction: reactive,
-    statement,
-    expression,
-    name,
-    hook,
-    callback: expression,
-  };
+  if (outer && capturesNestedScope(expression.getSourceFile(), target)) return undefined;
+  return target;
 }
 
 function bindingsReady(
@@ -265,13 +276,35 @@ function enclosingReactive(node: ts.Node): ts.FunctionLikeDeclaration | undefine
   return undefined;
 }
 
-function directlyIn(node: ts.Node, fn: ts.FunctionLikeDeclaration): boolean {
-  let current: ts.Node | undefined = node.parent;
-  while (current && current !== fn) {
-    if (isFunctionLike(current)) return false;
-    current = current.parent;
+function insideMemoizedCallback(node: ts.Node, fn: ts.FunctionLikeDeclaration): boolean {
+  for (let current = node.parent; current && current !== fn; current = current.parent) {
+    if (isFunctionLike(current) && isMemoizedCallback(current)) return true;
   }
-  return current === fn;
+  return false;
+}
+
+function isMemoizedCallback(fn: ts.FunctionLikeDeclaration): boolean {
+  const call = fn.parent;
+  if (!call || !ts.isCallExpression(call) || call.arguments[0] !== fn) return false;
+  const callee = call.expression;
+  const name = ts.isIdentifier(callee)
+    ? callee.text
+    : ts.isPropertyAccessExpression(callee)
+      ? callee.name.text
+      : undefined;
+  return name === "useMemo" || name === "useCallback";
+}
+
+/** The outermost function between a node and the component, or undefined when it sits directly in it. */
+function outermostFunctionBetween(
+  node: ts.Node,
+  fn: ts.FunctionLikeDeclaration,
+): ts.FunctionLikeDeclaration | undefined {
+  let outer: ts.FunctionLikeDeclaration | undefined;
+  for (let current = node.parent; current && current !== fn; current = current.parent) {
+    if (isFunctionLike(current)) outer = current;
+  }
+  return outer;
 }
 
 function statementInBody(node: ts.Node, fn: ts.FunctionLikeDeclaration): ts.Statement | undefined {
@@ -282,9 +315,36 @@ function statementInBody(node: ts.Node, fn: ts.FunctionLikeDeclaration): ts.Stat
   return fn.body.statements.find((statement) => statement === current);
 }
 
-function freshName(fn: ts.FunctionLikeDeclaration, base: string): string | undefined {
+function freshName(
+  fn: ts.FunctionLikeDeclaration,
+  base: string,
+  nested?: ts.Node,
+): string | undefined {
   const candidates = [base, `${base}Value`];
-  return candidates.find((name) => !nameTaken(fn, name));
+  return candidates.find(
+    (name) => !nameTaken(fn, name) && !(nested && declaresInside(nested, name)),
+  );
+}
+
+function declaresInside(root: ts.Node, name: string): boolean {
+  let found = false;
+  const visit = (node: ts.Node): void => {
+    if (found) return;
+    if (
+      ((ts.isVariableDeclaration(node) || ts.isParameter(node)) &&
+        bindingIncludes(node.name, name)) ||
+      ((ts.isFunctionDeclaration(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isClassDeclaration(node)) &&
+        node.name?.text === name)
+    ) {
+      found = true;
+      return;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(root);
+  return found;
 }
 
 function nameTaken(fn: ts.FunctionLikeDeclaration, name: string): boolean {

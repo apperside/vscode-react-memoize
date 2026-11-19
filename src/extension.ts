@@ -2,19 +2,33 @@ import * as vscode from "vscode";
 import { localKind, mightExtract } from "./mightExtract.js";
 import type { TextEdit } from "./buildEdits.js";
 import type { ExtractAction } from "./provideExtractAction.js";
+import { createLog, describe, log, preview } from "./log.js";
 
 const languages = ["javascript", "javascriptreact", "typescript", "typescriptreact"];
 const extractCommand = "reactMemoize.extract";
 
 export function activate(context: vscode.ExtensionContext): void {
+  const channel = createLog();
+  log.info(
+    `Activated. VS Code ${vscode.version}, extension ${String(context.extension.packageJSON.version)}`,
+  );
   context.subscriptions.push(
+    channel,
+    vscode.commands.registerCommand("reactMemoize.showLog", () => channel.show(true)),
     vscode.languages.registerCodeActionsProvider(languages, new ExtractProvider(), {
       providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
     }),
     vscode.commands.registerCommand(
       extractCommand,
       async (uri: string, start: number, end: number, languageId: string) => {
-        await runExtract(uri, start, end, languageId);
+        try {
+          await runExtract(uri, start, end, languageId);
+        } catch (error) {
+          log.error("Extract failed with an unexpected error", error);
+          void vscode.window.showErrorMessage(
+            "React Easy Memoize: extract failed. See the 'React Easy Memoize' output channel.",
+          );
+        }
       },
     ),
   );
@@ -23,15 +37,21 @@ export function activate(context: vscode.ExtensionContext): void {
 export function deactivate(): void {}
 
 class ExtractProvider implements vscode.CodeActionProvider {
-  provideCodeActions(
+  async provideCodeActions(
     document: vscode.TextDocument,
     range: vscode.Range | vscode.Selection,
     _context: vscode.CodeActionContext,
     token: vscode.CancellationToken,
-  ): vscode.CodeAction[] | undefined {
+  ): Promise<vscode.CodeAction[] | undefined> {
     if (token.isCancellationRequested) return undefined;
-    const title = titleFor(document, range);
-    if (!title) return undefined;
+    // The text rules are a cheap filter. The syntax tree has the last word, so the lightbulb never
+    // offers something the extract would then refuse.
+    if (!titleFor(document, range)) return undefined;
+    const title = await confirmedTitle(document, range);
+    if (!title || token.isCancellationRequested) return undefined;
+    log.debug(
+      `Offering "${title}" at ${document.fileName}:${range.start.line + 1}:${range.start.character + 1}`,
+    );
     const action = new vscode.CodeAction(title, vscode.CodeActionKind.QuickFix);
     action.command = {
       command: extractCommand,
@@ -47,6 +67,34 @@ class ExtractProvider implements vscode.CodeActionProvider {
   }
 }
 
+async function confirmedTitle(
+  document: vscode.TextDocument,
+  range: vscode.Range,
+): Promise<"Extract in useMemo" | "Extract in useCallback" | undefined> {
+  try {
+    const { provideExtractAction, scriptKindFor } = await import("./provideExtractAction.js");
+    const scriptKind = scriptKindFor(document.languageId);
+    if (!scriptKind) return undefined;
+    const selection = { start: document.offsetAt(range.start), end: document.offsetAt(range.end) };
+    const action = provideExtractAction(
+      document.getText(),
+      selection,
+      scriptKind,
+      undefined,
+      false,
+    );
+    if (!action) {
+      log.debug(
+        `No action at ${document.fileName}:${range.start.line + 1}:${range.start.character + 1}: the syntax tree has nothing to extract here`,
+      );
+    }
+    return action?.title;
+  } catch (error) {
+    log.error("Could not confirm the action against the syntax tree", error);
+    return undefined;
+  }
+}
+
 function titleFor(
   document: vscode.TextDocument,
   range: vscode.Range,
@@ -56,8 +104,13 @@ function titleFor(
   const following =
     range.start.line + 1 < document.lineCount ? document.lineAt(range.start.line + 1).text : "";
   const lookbehind = textAbove(document, range.start.line, 8);
-  if (!localKind(line, range.start.character, selected, following, lookbehind)) return undefined;
-  return mightExtract(
+  const where = `${document.fileName}:${range.start.line + 1}:${range.start.character + 1}`;
+  const kind = localKind(line, range.start.character, selected, following, lookbehind);
+  if (!kind) {
+    log.debug(`No action at ${where}: not a memo/callback candidate. Line: "${preview(line)}"`);
+    return undefined;
+  }
+  const title = mightExtract(
     line,
     range.start.character,
     selected,
@@ -65,6 +118,12 @@ function titleFor(
     linesAbove(document, range.start.line),
     lookbehind,
   );
+  if (!title) {
+    log.debug(
+      `No action at ${where}: candidate (${kind}) but not inside a function/arrow. Line: "${preview(line)}"`,
+    );
+  }
+  return title;
 }
 
 function textAbove(document: vscode.TextDocument, line: number, count: number): string {
@@ -102,35 +161,75 @@ async function runExtract(
   const { provideExtractAction, scriptKindFor } = await import("./provideExtractAction.js");
   const scriptKind = scriptKindFor(languageId);
   const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(uri));
-  if (!scriptKind) return;
-  const selection = { start, end };
-  const source = document.getText();
-  const preview = provideExtractAction(source, selection, scriptKind, undefined, false);
-  if (!preview) {
-    vscode.window.setStatusBarMessage("Nothing in this selection can be extracted", 4000);
+  log.info(
+    `Extract requested: ${document.fileName} [${start}-${end}] language=${languageId} ` +
+      `scheme=${document.uri.scheme} selected="${preview(document.getText().slice(start, end))}"`,
+  );
+  if (!scriptKind) {
+    log.warn(`Unsupported language "${languageId}", nothing to do`);
     return;
   }
+  const selection = { start, end };
+  const source = document.getText();
+  const dryRun = provideExtractAction(source, selection, scriptKind, undefined, false);
+  if (!dryRun) {
+    log.warn("findExtractTarget found no extractable node at this position");
+    try {
+      const { describeSyntaxPath, excerptAround } = await import("./explainNoTarget.js");
+      log.warn(`Source around the cursor: ${excerptAround(source, start)}`);
+      log.warn(
+        `Syntax path at the cursor, innermost first: ${describeSyntaxPath(source, scriptKind, start)}`,
+      );
+    } catch (error) {
+      log.error("Could not describe the syntax at the cursor", error);
+    }
+    void vscode.window
+      .showInformationMessage(
+        "React Easy Memoize: nothing can be extracted at this position.",
+        "Show log",
+      )
+      .then((choice) => {
+        if (choice === "Show log") createLog().show(true);
+      });
+    return;
+  }
+  log.info(`Target: ${dryRun.title} needsParameterTypes=${String(dryRun.needsParameterTypes)}`);
   let inferred;
-  if (preview.needsParameterTypes) {
+  if (dryRun.needsParameterTypes) {
     const tokens = new vscode.CancellationTokenSource();
     try {
       inferred = await (
         await import("./inferParameterTypes.js")
       ).inferParameterTypes(document, selection, scriptKind, tokens.token);
+      log.info(
+        inferred
+          ? `Inferred parameter types: ${JSON.stringify(inferred)}`
+          : "Could not infer parameter types (tsserver returned nothing usable)",
+      );
     } finally {
       tokens.dispose();
     }
   }
   const action = provideExtractAction(source, selection, scriptKind, inferred);
-  if (!action?.edits.length) return;
+  if (!action?.edits.length) {
+    log.warn("Second pass produced no edits, nothing applied");
+    return;
+  }
   const unresolved = action.unresolvedTypes ?? [];
+  log.info(
+    `Applying ${action.edits.length} edit(s); placeholder=${String(action.placeholder)} ` +
+      `unresolvedTypes=[${unresolved.join(", ")}]`,
+  );
+  log.debug(`Edits: ${JSON.stringify(action.edits)}`);
   const applied = await vscode.workspace.applyEdit(
     unresolved.length ? toPlainEdit(document, action) : toWorkspaceEdit(document, action),
   );
   if (!applied) {
+    log.error("workspace.applyEdit returned false");
     vscode.window.setStatusBarMessage("Extract could not be applied", 4000);
     return;
   }
+  log.info("Edits applied");
   if (!unresolved.length || !action.placeholder) return;
   const { importMissingTypes } = await import("./importMissingTypes.js");
   await importMissingTypes(document, action.placeholder, unresolved);
@@ -162,8 +261,9 @@ async function renameBinding(document: vscode.TextDocument, name: string): Promi
   });
   try {
     await vscode.commands.executeCommand("editor.action.rename");
-  } catch {
+  } catch (error) {
     // The extract is already in the file. Rename is only the editable name.
+    log.warn(`Rename step failed: ${describe(error)}`);
   }
 }
 

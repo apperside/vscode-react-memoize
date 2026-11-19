@@ -27,6 +27,28 @@ export function collectDependencies(sourceFile: ts.SourceFile, target: ExtractTa
   return reduce(hits);
 }
 
+/**
+ * True when the callback reads a binding declared in a function that sits between it and the
+ * component: such a callback cannot move up to the component body without losing that binding.
+ */
+export function capturesNestedScope(sourceFile: ts.SourceFile, target: ExtractTarget): boolean {
+  const between: ts.Node[] = [];
+  for (
+    let node: ts.Node | undefined = target.callback.parent;
+    node && node !== target.reactiveFunction;
+    node = node.parent
+  ) {
+    if (isFunctionLike(node)) between.push(node);
+  }
+  if (!between.length) return false;
+  return collectReferences(sourceFile).some(
+    (reference) =>
+      isInside(reference.ident, target.callback) &&
+      !isDeclaredInsideCallback(reference.decl, target.callback) &&
+      between.some((fn) => isInside(reference.decl, fn)),
+  );
+}
+
 function collectReferences(sourceFile: ts.SourceFile): Reference[] {
   const references: Reference[] = [];
   const moduleScope: Scope = { bindings: new Map() };
