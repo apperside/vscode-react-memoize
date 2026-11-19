@@ -7,7 +7,7 @@ export interface Selection {
 
 export type HookKind = "useMemo" | "useCallback";
 
-export interface ExtractTarget {
+export interface DeclarationExtractTarget {
   reactiveFunction: ts.FunctionLikeDeclaration;
   statement: ts.Statement;
   declaration: ts.VariableDeclaration | ts.FunctionDeclaration;
@@ -15,18 +15,109 @@ export interface ExtractTarget {
   callback: ts.Node;
 }
 
+export interface InlineExtractTarget {
+  reactiveFunction: ts.FunctionLikeDeclaration;
+  statement?: ts.Statement;
+  expression: ts.Expression;
+  name: string;
+  hook: HookKind;
+  callback: ts.Expression;
+  /** Arrow with no block: the edit wraps the body in `{ return ... }`. */
+  implicitReturn?: boolean;
+}
+
+export type ExtractTarget = DeclarationExtractTarget | InlineExtractTarget;
+
+export function isInlineExtract(target: ExtractTarget): target is InlineExtractTarget {
+  return "expression" in target;
+}
+
 export function findExtractTarget(
   sourceFile: ts.SourceFile,
   selection: Selection,
 ): ExtractTarget | undefined {
-  let found: ExtractTarget | undefined;
-  const visit = (node: ts.Node) => {
-    const target = targetForNode(sourceFile, node, selection);
-    if (target) found = target;
-    if (!found) ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
+  if (sourceFile.text.length === 0 || selection.start > sourceFile.text.length) return undefined;
+  const position = Math.min(selection.start, sourceFile.text.length - 1);
+  let current: ts.Node | undefined = nodeAt(sourceFile, position);
+  while (current) {
+    const declarations = declarationsOf(current);
+    if (declarations) {
+      for (const declaration of declarations) {
+        const target = targetForNode(sourceFile, declaration, selection);
+        if (target) return target;
+      }
+    } else {
+      const target = targetForNode(sourceFile, current, selection);
+      if (target) return target;
+    }
+    current = current.parent;
+  }
+  return pickInline(sourceFile, selection);
+}
+
+export function inlineInsertStatement(
+  target: InlineExtractTarget,
+  dependencies: readonly string[],
+): ts.Statement | undefined {
+  if (target.implicitReturn) return undefined;
+  const statement = target.statement;
+  const body = target.reactiveFunction.body;
+  if (!statement || !body || !ts.isBlock(body)) return undefined;
+  const index = body.statements.indexOf(statement);
+  if (index < 0) return undefined;
+  let anchor = statement;
+  for (let cursor = 0; cursor < index; cursor += 1) {
+    if (exitsOutsideNestedFunction(body.statements[cursor]!)) {
+      anchor = body.statements[cursor]!;
+      break;
+    }
+  }
+  if (!bindingsReady(body, anchor, dependencies)) return undefined;
+  return anchor;
+}
+
+function nodeAt(root: ts.Node, position: number): ts.Node {
+  let current = root;
+  let child = childContaining(current, position);
+  while (child) {
+    current = child;
+    child = childContaining(current, position);
+  }
+  return current;
+}
+
+function childContaining(node: ts.Node, position: number): ts.Node | undefined {
+  let found: ts.Node | undefined;
+  ts.forEachChild(node, (child) => {
+    if (!found && position >= child.pos && position < child.end) found = child;
+  });
   return found;
+}
+
+function declarationsOf(node: ts.Node): readonly ts.VariableDeclaration[] | undefined {
+  if (ts.isVariableStatement(node)) return node.declarationList.declarations;
+  if (ts.isVariableDeclarationList(node)) return node.declarations;
+  return undefined;
+}
+
+function inlineFromAttribute(
+  sourceFile: ts.SourceFile,
+  node: ts.Node,
+  selection: Selection,
+): InlineExtractTarget | undefined {
+  if (
+    !ts.isJsxAttribute(node) ||
+    !node.initializer ||
+    !ts.isJsxExpression(node.initializer) ||
+    !node.initializer.expression ||
+    !ts.isIdentifier(node.name)
+  ) {
+    return undefined;
+  }
+  const expression = node.initializer.expression;
+  const span = { start: expression.getStart(sourceFile), end: expression.getEnd() };
+  if (!overlaps(selection, span) || !isInlineExpression(expression)) return undefined;
+  return inlineTarget(expression, node.name.text);
 }
 
 function targetForNode(
@@ -47,10 +138,180 @@ function targetForNode(
   return undefined;
 }
 
+function isInlineExpression(expression: ts.Expression): boolean {
+  const unwrapped = unwrapExpression(expression);
+  return (
+    ts.isObjectLiteralExpression(unwrapped) ||
+    ts.isArrayLiteralExpression(unwrapped) ||
+    isCallbackInitializer(unwrapped)
+  );
+}
+
+function pickInline(
+  sourceFile: ts.SourceFile,
+  selection: Selection,
+): InlineExtractTarget | undefined {
+  let best: InlineExtractTarget | undefined;
+  const visit = (node: ts.Node) => {
+    const candidate = inlineFromAttribute(sourceFile, node, selection);
+    if (candidate && (!best || preferInline(candidate, best, selection))) best = candidate;
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return best;
+}
+
+function preferInline(
+  candidate: InlineExtractTarget,
+  best: InlineExtractTarget,
+  selection: Selection,
+): boolean {
+  const candidateCovers = covers(candidate.expression, selection);
+  const bestCovers = covers(best.expression, selection);
+  if (candidateCovers !== bestCovers) return candidateCovers;
+  return spanLength(candidate.expression) < spanLength(best.expression);
+}
+
+function covers(node: ts.Node, selection: Selection): boolean {
+  return node.getStart() <= selection.start && node.getEnd() >= selection.end;
+}
+
+function spanLength(node: ts.Node): number {
+  return node.getEnd() - node.getStart();
+}
+
+function inlineTarget(
+  expression: ts.Expression,
+  attribute: string,
+): InlineExtractTarget | undefined {
+  if (isInsideClass(expression) || isGenerator(unwrapExpression(expression))) return undefined;
+  if (containsHookCall(expression)) return undefined;
+  const reactive = enclosingReactive(expression);
+  if (!reactive?.body || !directlyIn(expression, reactive)) return undefined;
+  const name = freshName(reactive, attribute);
+  if (!name) return undefined;
+  const unwrapped = unwrapExpression(expression);
+  const hook: HookKind = isCallbackInitializer(unwrapped) ? "useCallback" : "useMemo";
+  if (!ts.isBlock(reactive.body)) {
+    return {
+      reactiveFunction: reactive,
+      expression,
+      name,
+      hook,
+      callback: expression,
+      implicitReturn: true,
+    };
+  }
+  const statement = statementInBody(expression, reactive);
+  if (!statement) return undefined;
+  return {
+    reactiveFunction: reactive,
+    statement,
+    expression,
+    name,
+    hook,
+    callback: expression,
+  };
+}
+
+function bindingsReady(
+  body: ts.Block,
+  anchor: ts.Statement,
+  dependencies: readonly string[],
+): boolean {
+  const start = body.statements.indexOf(anchor);
+  for (const dependency of dependencies) {
+    const name = dependency.split(/[.[]/)[0];
+    if (!name) continue;
+    for (let index = start; index < body.statements.length; index += 1) {
+      if (statementBinds(body.statements[index]!, name)) return false;
+    }
+  }
+  return true;
+}
+
+function statementBinds(statement: ts.Statement, name: string): boolean {
+  if (ts.isClassDeclaration(statement)) return statement.name?.text === name;
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations.some((declaration) =>
+      bindingIncludes(declaration.name, name),
+    );
+  }
+  if (
+    ts.isForStatement(statement) ||
+    ts.isForOfStatement(statement) ||
+    ts.isForInStatement(statement)
+  ) {
+    const initializer = statement.initializer;
+    return (
+      !!initializer &&
+      ts.isVariableDeclarationList(initializer) &&
+      initializer.declarations.some((declaration) => bindingIncludes(declaration.name, name))
+    );
+  }
+  if (ts.isTryStatement(statement)) {
+    const caught = statement.catchClause?.variableDeclaration?.name;
+    return !!caught && bindingIncludes(caught, name);
+  }
+  return false;
+}
+
+function enclosingReactive(node: ts.Node): ts.FunctionLikeDeclaration | undefined {
+  let current: ts.Node | undefined = node.parent;
+  while (current) {
+    if (isFunctionLike(current) && isReactive(current)) return current;
+    current = current.parent;
+  }
+  return undefined;
+}
+
+function directlyIn(node: ts.Node, fn: ts.FunctionLikeDeclaration): boolean {
+  let current: ts.Node | undefined = node.parent;
+  while (current && current !== fn) {
+    if (isFunctionLike(current)) return false;
+    current = current.parent;
+  }
+  return current === fn;
+}
+
+function statementInBody(node: ts.Node, fn: ts.FunctionLikeDeclaration): ts.Statement | undefined {
+  if (!fn.body || !ts.isBlock(fn.body)) return undefined;
+  let current: ts.Node | undefined = node;
+  while (current && current.parent !== fn.body) current = current.parent;
+  if (!current) return undefined;
+  return fn.body.statements.find((statement) => statement === current);
+}
+
+function freshName(fn: ts.FunctionLikeDeclaration, base: string): string | undefined {
+  const candidates = [base, `${base}Value`];
+  return candidates.find((name) => !nameTaken(fn, name));
+}
+
+function nameTaken(fn: ts.FunctionLikeDeclaration, name: string): boolean {
+  if (fn.parameters.some((parameter) => bindingIncludes(parameter.name, name))) return true;
+  if (!fn.body || !ts.isBlock(fn.body)) return false;
+  for (const statement of fn.body.statements) {
+    if (ts.isFunctionDeclaration(statement) && statement.name?.text === name) return true;
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (bindingIncludes(declaration.name, name)) return true;
+    }
+  }
+  return false;
+}
+
+function bindingIncludes(name: ts.BindingName, text: string): boolean {
+  if (ts.isIdentifier(name)) return name.text === text;
+  for (const element of name.elements) {
+    if (ts.isBindingElement(element) && bindingIncludes(element.name, text)) return true;
+  }
+  return false;
+}
+
 function finish(
   declaration: ts.VariableDeclaration | ts.FunctionDeclaration,
   statement: ts.Statement,
-): ExtractTarget | undefined {
+): DeclarationExtractTarget | undefined {
   if (isInsideClass(declaration)) return undefined;
   const reactive = nearestReactive(statement);
   if (!reactive || reactive === declaration) return undefined;

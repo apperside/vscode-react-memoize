@@ -1,23 +1,24 @@
 {
   "name": "vscode-react-memoize",
-  "displayName": "Instantly transform variables and function in useMemo and useCallback with tracked dependencies array",
-  "version": "0.0.1",
-  "description": "Extract a declaration in a React component or custom hook into useMemo or useCallback.",
+  "displayName": "React Easy Memoize",
+  "version": "0.0.4",
+  "description": "Instantly transform variables and function in useMemo and useCallback with tracked dependencies array",
   "categories": [
     "Other"
   ],
+  "homepage": "https://apperside.github.io/vscode-react-memoize/",
   "license": "MIT",
-  "publisher": "apperside",
   "repository": {
     "type": "git",
     "url": "https://github.com/apperside/vscode-react-memoize.git"
   },
-  "homepage": "https://apperside.github.io/vscode-react-memoize/",
+  "publisher": "apperside",
   "type": "module",
   "main": "./out/extension.js",
   "scripts": {
     "test": "node --import tsx --test src/test/*.test.ts",
     "compile": "tsc -p .",
+    "package": "npm run compile && npx @vscode/vsce package",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
@@ -41,6 +42,6 @@
     "onLanguage:typescriptreact"
   ],
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.86.0"
   }
 }

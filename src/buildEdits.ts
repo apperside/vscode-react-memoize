@@ -1,17 +1,29 @@
 import ts from "typescript";
-import type { ExtractTarget } from "./findExtractTarget.js";
+import { annotateCallback, type InferredCallback } from "./callbackTypes.js";
+import {
+  isInlineExtract,
+  type DeclarationExtractTarget,
+  type ExtractTarget,
+  type InlineExtractTarget,
+} from "./findExtractTarget.js";
 
 export interface TextEdit {
   start: number;
   end: number;
   newText: string;
+  /** Inline extract: this edit contains the binding name as a snippet placeholder. */
+  placeholder?: "declaration" | "usage";
 }
 
 export function buildEdits(
   sourceFile: ts.SourceFile,
   target: ExtractTarget,
   dependencies: readonly string[],
+  inferred?: InferredCallback,
+  reactTypes: readonly string[] = [],
 ): TextEdit[] {
+  if (isInlineExtract(target))
+    return inlineEdits(sourceFile, target, dependencies, inferred, reactTypes);
   const qualifier = reactNamespace(sourceFile);
   const callee = qualifier ? `${qualifier}.${target.hook}` : target.hook;
   const statementStart = target.statement.getStart(sourceFile);
@@ -24,15 +36,129 @@ export function buildEdits(
     },
   ];
   if (!qualifier) {
-    const importEdit = ensureReactImport(sourceFile, target.hook);
+    const importEdit = ensureReactImport(sourceFile, target.hook, []);
     if (importEdit) edits.push(importEdit);
   }
   return edits;
 }
 
+function inlineEdits(
+  sourceFile: ts.SourceFile,
+  target: InlineExtractTarget,
+  dependencies: readonly string[],
+  inferred: InferredCallback | undefined,
+  reactTypes: readonly string[],
+): TextEdit[] {
+  if (target.implicitReturn || !target.statement)
+    return implicitInlineEdits(sourceFile, target, dependencies, inferred, reactTypes);
+  const qualifier = reactNamespace(sourceFile);
+  const callee = qualifier ? `${qualifier}.${target.hook}` : target.hook;
+  const statementStart = target.statement.getStart(sourceFile);
+  const baseIndent = indentAt(sourceFile.text, statementStart);
+  const callback =
+    target.hook === "useCallback"
+      ? annotateCallback(sourceFile, target.expression, inferred)
+      : `() => ${initializerText(target.expression, sourceFile)}`;
+  const call = printCall(
+    callee,
+    callback,
+    dependencies,
+    target.expression.getText(sourceFile).includes("\n"),
+    baseIndent,
+  );
+  const edits: TextEdit[] = [
+    {
+      start: target.expression.getStart(sourceFile),
+      end: target.expression.getEnd(),
+      newText: target.name,
+      placeholder: "usage",
+    },
+    {
+      start: statementStart,
+      end: statementStart,
+      newText: `const ${target.name} = ${call};\n${baseIndent}`,
+      placeholder: "declaration",
+    },
+  ];
+  if (!qualifier) {
+    const importEdit = ensureReactImport(sourceFile, target.hook, reactTypes);
+    if (importEdit) edits.push(importEdit);
+  } else if (reactTypes.length) {
+    const importEdit = typeOnlyReactImport(sourceFile, reactTypes);
+    if (importEdit) edits.push(importEdit);
+  }
+  return edits;
+}
+
+function implicitInlineEdits(
+  sourceFile: ts.SourceFile,
+  target: InlineExtractTarget,
+  dependencies: readonly string[],
+  inferred: InferredCallback | undefined,
+  reactTypes: readonly string[],
+): TextEdit[] {
+  const body = target.reactiveFunction.body;
+  if (!body || ts.isBlock(body)) return [];
+  const qualifier = reactNamespace(sourceFile);
+  const callee = qualifier ? `${qualifier}.${target.hook}` : target.hook;
+  const indent = indentAt(sourceFile.text, target.reactiveFunction.getStart(sourceFile));
+  const inner = `${indent}  `;
+  const callback =
+    target.hook === "useCallback"
+      ? annotateCallback(sourceFile, target.expression, inferred)
+      : `() => ${initializerText(target.expression, sourceFile)}`;
+  const call = printCall(
+    callee,
+    callback,
+    dependencies,
+    target.expression.getText(sourceFile).includes("\n"),
+    inner,
+  );
+  const edits: TextEdit[] = [
+    {
+      start: target.expression.getStart(sourceFile),
+      end: target.expression.getEnd(),
+      newText: target.name,
+      placeholder: "usage",
+    },
+    {
+      start: body.getStart(sourceFile),
+      end: body.getStart(sourceFile),
+      newText: `{\n${inner}const ${target.name} = ${call};\n${inner}return `,
+      placeholder: "declaration",
+    },
+    {
+      start: body.getEnd(),
+      end: body.getEnd(),
+      newText: `;\n${indent}}`,
+    },
+  ];
+  if (!qualifier) {
+    const importEdit = ensureReactImport(sourceFile, target.hook, reactTypes);
+    if (importEdit) edits.push(importEdit);
+  } else if (reactTypes.length) {
+    const importEdit = typeOnlyReactImport(sourceFile, reactTypes);
+    if (importEdit) edits.push(importEdit);
+  }
+  return edits;
+}
+
+function typeOnlyReactImport(
+  sourceFile: ts.SourceFile,
+  reactTypes: readonly string[],
+): TextEdit | undefined {
+  const imports = sourceFile.statements.filter(ts.isImportDeclaration);
+  const line = `import type { ${reactTypes.join(", ")} } from "react";`;
+  const anchor = imports[imports.length - 1];
+  if (anchor) return { start: anchor.getEnd(), end: anchor.getEnd(), newText: `\n${line}` };
+  const first = sourceFile.statements[0];
+  const position = first ? first.getStart(sourceFile) : 0;
+  return { start: position, end: position, newText: `${line}\n` };
+}
+
 function rewriteStatement(
   sourceFile: ts.SourceFile,
-  target: ExtractTarget,
+  target: DeclarationExtractTarget,
   callee: string,
   dependencies: readonly string[],
   baseIndent: string,
@@ -138,38 +264,57 @@ function reactNamespace(sourceFile: ts.SourceFile): string | undefined {
   return undefined;
 }
 
-function ensureReactImport(sourceFile: ts.SourceFile, hook: string): TextEdit | undefined {
+function ensureReactImport(
+  sourceFile: ts.SourceFile,
+  hook: string,
+  reactTypes: readonly string[],
+): TextEdit | undefined {
   const imports = sourceFile.statements.filter(
     (statement): statement is ts.ImportDeclaration =>
       ts.isImportDeclaration(statement) && isReactModule(statement),
   );
   const valueImport = imports.find((statement) => !statement.importClause?.isTypeOnly);
-  if (valueImport && hasValueSpecifier(valueImport, hook)) return undefined;
+  const types = reactTypes.filter(
+    (name) => !imports.some((statement) => clauseHas(statement, name)),
+  );
+  const hookNeeded = !valueImport || !hasValueSpecifier(valueImport, hook);
+  const specifiers = [...(hookNeeded ? [hook] : []), ...types.map((name) => `type ${name}`)];
+  if (!specifiers.length) return undefined;
+  const rendered = specifiers.join(", ");
   if (valueImport?.importClause) {
     const clause = valueImport.importClause;
     const named = clause.namedBindings;
     if (named && ts.isNamedImports(named) && named.elements.length > 0) {
       const last = named.elements[named.elements.length - 1]!;
-      return { start: last.getEnd(), end: last.getEnd(), newText: `, ${hook}` };
+      return { start: last.getEnd(), end: last.getEnd(), newText: `, ${rendered}` };
     }
     if (clause.name && !named) {
-      return { start: clause.name.getEnd(), end: clause.name.getEnd(), newText: `, { ${hook} }` };
+      return {
+        start: clause.name.getEnd(),
+        end: clause.name.getEnd(),
+        newText: `, { ${rendered} }`,
+      };
     }
   }
+  const line = `import { ${rendered} } from "react";`;
   const anchor = imports.length > 0 ? imports[imports.length - 1] : undefined;
-  if (anchor) {
-    return {
-      start: anchor.getEnd(),
-      end: anchor.getEnd(),
-      newText: `\nimport { ${hook} } from "react";`,
-    };
-  }
+  if (anchor) return { start: anchor.getEnd(), end: anchor.getEnd(), newText: `\n${line}` };
   const prologue = directiveEnd(sourceFile);
-  if (prologue > 0)
-    return { start: prologue, end: prologue, newText: `\nimport { ${hook} } from "react";` };
+  if (prologue > 0) return { start: prologue, end: prologue, newText: `\n${line}` };
   const first = sourceFile.statements[0];
   const position = first ? first.getStart(sourceFile) : 0;
-  return { start: position, end: position, newText: `import { ${hook} } from "react";\n` };
+  return { start: position, end: position, newText: `${line}\n` };
+}
+
+function clauseHas(statement: ts.ImportDeclaration, name: string): boolean {
+  const clause = statement.importClause;
+  if (!clause) return false;
+  if (clause.name?.text === name) return true;
+  const named = clause.namedBindings;
+  if (named && ts.isNamespaceImport(named)) return named.name.text === name;
+  if (named && ts.isNamedImports(named))
+    return named.elements.some((element) => element.name.text === name);
+  return false;
 }
 
 function directiveEnd(sourceFile: ts.SourceFile): number {

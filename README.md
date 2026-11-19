@@ -53,12 +53,12 @@ The extension picks the hook from the declaration. A function becomes `useCallba
 
 ## What you can extract
 
-| You select | You get |
-| --- | --- |
-| `const label = user.name` | `const label = useMemo(() => user.name, [user.name])` |
-| `let label = user.name` | the same, rewritten as `const` |
-| `const { name } = user` | `const { name } = useMemo(() => user, [user])` |
-| `const handle = () => onSelect(id)` | `const handle = useCallback(() => onSelect(id), [onSelect, id])` |
+| You select                            | You get                                                               |
+| ------------------------------------- | --------------------------------------------------------------------- |
+| `const label = user.name`             | `const label = useMemo(() => user.name, [user.name])`                 |
+| `let label = user.name`               | the same, rewritten as `const`                                        |
+| `const { name } = user`               | `const { name } = useMemo(() => user, [user])`                        |
+| `const handle = () => onSelect(id)`   | `const handle = useCallback(() => onSelect(id), [onSelect, id])`      |
 | `function handle() { onSelect(id); }` | `const handle = useCallback(() => { onSelect(id); }, [onSelect, id])` |
 
 A statement with several bindings is split. Extracting `b` from `const a = 1, b = props.b, c = 3` leaves `a` and `c` as they were, and writes `b` on the next line.
