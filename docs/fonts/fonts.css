@@ -1,0 +1,28 @@
+@font-face {
+  font-family: "Big Shoulders Display";
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+  src: url(BigShouldersDisplay.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Archivo Narrow";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(ArchivoNarrow.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Spline Sans Mono";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url(SplineSansMono.woff2) format("woff2");
+}
+@font-face {
+  font-family: "Big Shoulders Stencil";
+  font-style: normal;
+  font-weight: 700 900;
+  font-display: swap;
+  src: url(BigShouldersStencil.woff2) format("woff2");
+}

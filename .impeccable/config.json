@@ -1,0 +1,15 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "repeated-container-text",
+        "value": "*",
+        "files": ["docs/index.html"],
+        "createdAt": "2026-11-19T04:42:47.957Z",
+        "reason": "agent decision, not user confirmed: the demo shows real source lines where the keyword const legitimately appears several times"
+      }
+    ]
+  }
+}

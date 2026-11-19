@@ -27,6 +27,7 @@ jobs:
         run: |
           mkdir -p _site
           cp docs/index.html _site/index.html
+          cp -R docs/fonts _site/fonts
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

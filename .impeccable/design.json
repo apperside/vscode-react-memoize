@@ -1,0 +1,356 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-19T04:53:14Z",
+  "title": "Design System: React Easy Memoize",
+  "extensions": {
+    "colorMeta": {
+      "customs-green": {
+        "role": "primary",
+        "displayName": "Customs Green",
+        "canonical": "#0b6e4f",
+        "tonalRamp": [
+          "#031c14",
+          "#063728",
+          "#08523b",
+          "#0b6e4f",
+          "#48927b",
+          "#85b6a7",
+          "#bbd6ce",
+          "#e2eeea"
+        ]
+      },
+      "customs-green-deep": {
+        "role": "primary",
+        "displayName": "Deep Customs Green",
+        "canonical": "#084a36",
+        "tonalRamp": [
+          "#02120e",
+          "#04251b",
+          "#063828",
+          "#084a36",
+          "#467768",
+          "#84a49a",
+          "#baccc7",
+          "#e1e9e7"
+        ]
+      },
+      "on-green": {
+        "role": "neutral",
+        "displayName": "Pale Green Print",
+        "canonical": "#d4efe2",
+        "tonalRamp": [
+          "#353c38",
+          "#6a7871",
+          "#9fb3aa",
+          "#d4efe2",
+          "#dff3e9",
+          "#eaf7f0",
+          "#f3fbf7",
+          "#fafdfc"
+        ]
+      },
+      "sheet-white": {
+        "role": "neutral",
+        "displayName": "Sheet White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#404040",
+          "#808080",
+          "#bfbfbf",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff",
+          "#ffffff"
+        ]
+      },
+      "form-tint": {
+        "role": "neutral",
+        "displayName": "Form Tint",
+        "canonical": "#eaf4ee",
+        "tonalRamp": [
+          "#3a3d3c",
+          "#757a77",
+          "#b0b7b2",
+          "#eaf4ee",
+          "#eff7f2",
+          "#f4faf6",
+          "#f9fcfa",
+          "#fcfefd"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Form Ink",
+        "canonical": "#101820",
+        "tonalRamp": [
+          "#040608",
+          "#080c10",
+          "#0c1218",
+          "#101820",
+          "#4c5258",
+          "#888c90",
+          "#bcbec1",
+          "#e2e3e4"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Green Ink",
+        "canonical": "#335246",
+        "tonalRamp": [
+          "#0d1412",
+          "#1a2923",
+          "#263e34",
+          "#335246",
+          "#667d74",
+          "#99a8a2",
+          "#c6cfcb",
+          "#e7eae9"
+        ]
+      },
+      "install-red": {
+        "role": "tertiary",
+        "displayName": "Install Red",
+        "canonical": "#d62d20",
+        "tonalRamp": [
+          "#360b08",
+          "#6b1610",
+          "#a02218",
+          "#d62d20",
+          "#e06258",
+          "#ea9690",
+          "#f4c4c1",
+          "#fae6e4"
+        ]
+      },
+      "rubber-violet": {
+        "role": "secondary",
+        "displayName": "Rubber Stamp Violet",
+        "canonical": "#3a2f8f",
+        "tonalRamp": [
+          "#0e0c24",
+          "#1d1848",
+          "#2c236b",
+          "#3a2f8f",
+          "#6b63ab",
+          "#9c97c7",
+          "#c8c5e0",
+          "#e7e6f2"
+        ]
+      },
+      "offer-blush": {
+        "role": "neutral",
+        "displayName": "Offer Blush",
+        "canonical": "#fdebe8",
+        "tonalRamp": [
+          "#3f3b3a",
+          "#7e7674",
+          "#beb0ae",
+          "#fdebe8",
+          "#fef0ee",
+          "#fef5f4",
+          "#fef9f9",
+          "#fffdfc"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page headline in the title cell."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Section titles in the lower form parts."
+      },
+      "stamp": {
+        "displayName": "Stamp",
+        "purpose": "Rubber stamps only (Big Shoulders Stencil)."
+      },
+      "action": {
+        "displayName": "Action",
+        "purpose": "INSTALL stamp button label."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Prose, 62ch max in form parts."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Numbered field labels, table headers, definition terms."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Code, carried items, commands."
+      }
+    },
+    "shadows": [
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 6px #ffffff",
+        "purpose": "Only box-shadow in the build: white ring around the 3px violet focus outline. Outline turns white and the ring is dropped on the green ground."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-settle",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Inserted code growing in, items rising into box 2, leader lines drawing, button press."
+      },
+      {
+        "name": "stamp-land",
+        "value": "0.22s cubic-bezier(0.2, 0.9, 0.2, 1) from scale 1.5",
+        "purpose": "CLEARED landing on the declaration row."
+      },
+      {
+        "name": "demo-sequence",
+        "value": "caret 1.1s, offer 1.0s, wrap 1.7s, caret 0.9s, offer 1.0s, wrap 1.9s, cleared 3.6s",
+        "purpose": "Extraction demo step timing; reduced motion shows the finished state."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "1280px (leader lines render from here)"
+      },
+      {
+        "name": "tablet",
+        "value": "861px to 1279px (code full width, items and exempt 6/6)"
+      },
+      {
+        "name": "stack",
+        "value": "860px (single column)"
+      },
+      {
+        "name": "phone",
+        "value": "560px (tables become labelled blocks, code wraps)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Stamp Button",
+      "kind": "button",
+      "refersTo": "stamp-button",
+      "description": "The one primary action: INSTALL.",
+      "html": "<a class=\"ds-stamp-btn\" href=\"#\">Install for VS Code</a>",
+      "css": ".ds-stamp-btn{display:block;padding:.7rem 1rem .6rem;background:#d62d20;color:#fff;font-family:'Big Shoulders Display','Arial Narrow',sans-serif;font-weight:900;font-size:2.1rem;line-height:1;letter-spacing:.03em;text-align:center;text-decoration:none;text-transform:uppercase;border:3px solid #101820;transition:background .15s ease,transform .15s cubic-bezier(.16,1,.3,1)}.ds-stamp-btn:hover{background:#101820}.ds-stamp-btn:active{transform:scale(.98)}.ds-stamp-btn:focus-visible{outline:3px solid #3a2f8f;outline-offset:3px;box-shadow:0 0 0 6px #fff}"
+    },
+    {
+      "name": "Utility Button",
+      "kind": "button",
+      "refersTo": "utility-button",
+      "description": "Small ruled button for Play again and Copy.",
+      "html": "<button class=\"ds-util\" type=\"button\">Play again</button>",
+      "css": ".ds-util{border:2px solid #101820;background:#fff;color:#101820;font:700 .78rem/1 'Archivo Narrow','Arial Narrow',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:.4rem .6rem;cursor:pointer}.ds-util:hover{background:#101820;color:#fff}.ds-util:focus-visible{outline:3px solid #3a2f8f;outline-offset:3px;box-shadow:0 0 0 6px #fff}"
+    },
+    {
+      "name": "Form Cell",
+      "kind": "card",
+      "refersTo": "form-cell",
+      "description": "A numbered box on the ink-ruled grid.",
+      "html": "<div class=\"ds-grid\"><div class=\"ds-cell\"><span class=\"ds-label\">3. Exempt, not declared</span><ul class=\"ds-list\"><li>Imports and values declared outside the component</li><li>ref.current</li></ul></div></div>",
+      "css": ".ds-grid{padding:2px;background:#101820}.ds-cell{position:relative;background:#fff;color:#101820;padding:1.5rem 1.25rem 1rem;font-family:'Archivo Narrow','Arial Narrow',sans-serif;font-size:1rem}.ds-label{position:absolute;top:.4rem;left:.7rem;font-weight:700;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:#335246}.ds-list{margin:0;padding:0;list-style:none}.ds-list li{position:relative;padding:.38rem 0 .38rem 1.8rem;border-bottom:1.5px solid #101820}.ds-list li::before{content:'';position:absolute;left:.1rem;top:.72em;width:.95rem;height:.95rem;border:2px solid #101820;background:linear-gradient(45deg,transparent 43%,#101820 43%,#101820 57%,transparent 57%),linear-gradient(-45deg,transparent 43%,#101820 43%,#101820 57%,transparent 57%)}"
+    },
+    {
+      "name": "Item Chip",
+      "kind": "chip",
+      "refersTo": "item-chip",
+      "description": "A carried dependency in box 2, in violet ink.",
+      "html": "<div class=\"ds-carry\"><span class=\"ds-item\">user.name</span><span class=\"ds-bind\">for <code>label</code></span></div>",
+      "css": ".ds-carry{display:grid;grid-template-columns:6.5rem 1fr;align-items:center;gap:.5rem;min-height:3rem;padding:.5rem 0;border-bottom:1.5px solid #101820;font-family:'Archivo Narrow',sans-serif;background:#fff}.ds-item{justify-self:start;font-family:'Spline Sans Mono',ui-monospace,Menlo,monospace;font-size:.8125rem;font-weight:600;padding:.2rem .5rem;color:#fff;background:#3a2f8f}.ds-bind{font-size:.95rem;color:#335246}.ds-bind code{font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:.8125rem;font-weight:600;color:#101820}"
+    },
+    {
+      "name": "Rubber Stamp",
+      "kind": "custom",
+      "refersTo": "rubber-stamp",
+      "description": "CLEARED or NOT OFFERED: violet stencil, rotated, ink-filtered.",
+      "html": "<svg width=\"0\" height=\"0\" style=\"position:absolute\"><filter id=\"ink\" x=\"-6%\" y=\"-12%\" width=\"112%\" height=\"124%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.85\" numOctaves=\"2\" seed=\"4\" result=\"rough\"/><feDisplacementMap in=\"SourceGraphic\" in2=\"rough\" scale=\"3.2\" xChannelSelector=\"R\" yChannelSelector=\"G\" result=\"edge\"/><feTurbulence type=\"fractalNoise\" baseFrequency=\"0.5\" numOctaves=\"3\" seed=\"11\" result=\"grain\"/><feColorMatrix in=\"grain\" type=\"matrix\" values=\"0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  6 0 0 0 -1.15\" result=\"holes\"/><feComposite in=\"edge\" in2=\"holes\" operator=\"in\"/></filter></svg><span class=\"ds-stamp\">Cleared</span>",
+      "css": ".ds-stamp{display:inline-block;margin:1rem;padding:.15rem .9rem .05rem;border:4px solid #3a2f8f;outline:2px solid #3a2f8f;outline-offset:3px;color:#3a2f8f;font-family:'Big Shoulders Stencil','Big Shoulders Display',sans-serif;font-weight:800;font-size:2.4rem;letter-spacing:.06em;text-transform:uppercase;line-height:1.05;rotate:-7deg;mix-blend-mode:multiply;filter:url(#ink);opacity:.92}"
+    },
+    {
+      "name": "Command Field",
+      "kind": "input",
+      "refersTo": "form-cell",
+      "description": "Install command with Copy, ruled like a form field.",
+      "html": "<div class=\"ds-cmd\"><code>code --install-extension apperside.vscode-react-memoize</code><button type=\"button\">Copy</button></div>",
+      "css": ".ds-cmd{display:flex;align-items:stretch;border:2px solid #101820;background:#fff}.ds-cmd code{flex:1;min-width:0;padding:.45rem .65rem;overflow-wrap:anywhere;font-family:'Spline Sans Mono',ui-monospace,monospace;font-size:.78rem;background:#eaf4ee;color:#101820}.ds-cmd button{border:0;border-left:2px solid #101820;background:#fff;color:#101820;font:700 .78rem/1 'Archivo Narrow',sans-serif;letter-spacing:.08em;text-transform:uppercase;padding:0 .8rem;cursor:pointer}.ds-cmd button:hover{background:#101820;color:#fff}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Customs Declaration",
+    "overview": "The page is one form filled in at a border. A callback declares what it carries, and the dependency array is the declaration the tool completes for you. The ground is a saturated customs green. On it sits a white sheet, ruled into numbered boxes by 2px ink gaps, with typed entries in a mono and two rubber stamps. Near-black ink does the ruling and the text. Red and violet are the only accents and they are never interchangeable.\n\nDensity is that of a real form: tight cells, small uppercase field labels, hard rules between everything. Nothing floats and nothing is soft. Depth comes from the green ground showing around a white sheet, and from the ink grid itself. Motion is limited to the demo filling the form in line by line, leader lines drawing back to the code, and a stamp landing.\n\nThe system refuses the dark editor mockup with a neon accent, and refuses cream paper with a serif. Both are named in the direction contract as the default answers this world replaces.",
+    "keyCharacteristics": [
+      "One hard 12-column grid, drawn as 2px ink gaps over an ink background; every box is a white or tinted cell.",
+      "Square everything: no radii, no soft shadows, no gradients except the hatched check-box marks.",
+      "Condensed stencil display for titles and stamps, a narrow grotesque for text and labels, a mono for code only.",
+      "Red means install. Violet means ink: carried items, leader lines, refusals, stamps.",
+      "Rubber stamps are roughened with an SVG turbulence filter and multiplied into the sheet."
+    ],
+    "rules": [
+      {
+        "name": "The Red Means Install Rule",
+        "body": "Red is the INSTALL action, and inside the code demo it marks the inserted hook names, the caret and the lightbulb. It never marks refusal, emphasis, or decoration elsewhere.",
+        "section": "colors"
+      },
+      {
+        "name": "The Violet Is Ink Rule",
+        "body": "Violet is what a stamp or a pen leaves on the form: carried items, leader lines, stamps, refusals. It never appears on a button.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ground Rule",
+        "body": "Green is ground and string colour only. Text on the green ground is white or On Green; body copy never sits on green directly, it sits in a white cell.",
+        "section": "colors"
+      },
+      {
+        "name": "The Typed Entry Rule",
+        "body": "The mono is for what a machine or a typist entered: code, items, commands. Prose and labels never use it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Stencil Is Stamped Rule",
+        "body": "Stencil is reserved for rubber stamps. Titles and the INSTALL button use the plain display face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Gap Is the Rule Rule",
+        "body": "Rules between boxes are the 2px grid gap showing ink, never a border on each cell. Rules inside a cell are 1.5px ink lines.",
+        "section": "layout"
+      },
+      {
+        "name": "The Leader Lines Are Wide-Only Rule",
+        "body": "The violet leader lines tying box 2 items to the code tokens render only at 1280px and up, where the two boxes sit side by side. Below that they are hidden and the items stand without them.",
+        "section": "layout"
+      },
+      {
+        "name": "The No Shadow Rule",
+        "body": "Surfaces are never lifted. State changes by fill inversion (to ink) or a 0.98 press scale, not by a shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Ink Filter Rule",
+        "body": "Only rubber stamps get the #ink filter: fractal-noise displacement for rough edges plus a grain mask for worn patches. Text, buttons and cells stay crisp.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do build every surface from 2px-ruled ink grid cells on white or Form Tint, over the Customs Green ground.",
+      "Do number the field labels of a form box and keep them uppercase Label type.",
+      "Do reserve Install Red for the install action and for hook names, caret and lightbulb inside code demos.",
+      "Do use Rubber Violet for carried items, leader lines, refusals and stamps.",
+      "Do run rubber stamps through the `#ink` filter with `mix-blend-mode: multiply`.",
+      "Do show the finished state when `prefers-reduced-motion` is set.",
+      "Do keep the 3px violet outline plus 6px white halo on focus; on the green ground the outline turns white."
+    ],
+    "donts": [
+      "Don't use soft or offset shadows, rounded corners, or gradients as decoration.",
+      "Don't set prose or labels in the mono, or titles in the Stencil face.",
+      "Don't use red for refusal or warning, or violet for a button.",
+      "Don't place body copy directly on the green ground.",
+      "Don't fall back to a dark editor panel with a neon accent, or to cream paper with a serif.",
+      "Don't invent proof: no counts, ratings, testimonials or install numbers exist."
+    ]
+  }
+}

@@ -3,26 +3,31 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Extract in useMemo and useCallback</title>
+    <title>React Easy Memoize</title>
     <meta
       name="description"
-      content="A VS Code refactor that wraps a variable in useMemo or a function in useCallback, and fills the dependency array."
+      content="A VS Code refactor that wraps a variable in useMemo or a function in useCallback and fills the dependency array the way exhaustive-deps would."
     />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' fill='%230b6e4f'/%3E%3Cpath d='M46 26C36 26 34 30 34 40V52C34 59 30 64 22 64C30 64 34 69 34 76V88C34 98 36 102 46 102M82 26C92 26 94 30 94 40V52C94 59 98 64 106 64C98 64 94 69 94 76V88C94 98 92 102 82 102' fill='none' stroke='%23fff' stroke-width='9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cg transform='translate(64 62) scale(1.08)'%3E%3Cpath d='M0-26a19 19 0 0 0-11 34c3 2 4 5 4 8h14c0-3 1-6 4-8A19 19 0 0 0 0-26Z' fill='%23dcdcaa'/%3E%3Crect x='-7' y='19' width='14' height='5' fill='%23fff'/%3E%3Crect x='-5' y='26' width='10' height='5' fill='%23fff'/%3E%3C/g%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="fonts/fonts.css" />
     <style>
       :root {
-        --air: #e4eef2;
-        --ink: #1a242e;
-        --muted: #5c6b76;
-        --paper: #fbfaf6;
-        --rule: #e3ddd2;
-        --gutter: #f3efe6;
-        --caret: #e25b1a;
-        --hook: #0c6b64;
-        --kw: #5a4784;
-        --fn: #1a242e;
-        --punct: #6d6458;
-        --jsx: #8a4b2f;
-        --land: #d8f3ee;
+        --green: #0b6e4f;
+        --green-deep: #084a36;
+        --on-green: #d4efe2;
+        --sheet: #ffffff;
+        --tint: #eaf4ee;
+        --ink: #101820;
+        --ink-soft: #335246;
+        --red: #d62d20;
+        --violet: #3a2f8f;
+        --token: #dcdcaa;
+        --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+        --text: "Archivo Narrow", "Arial Narrow", sans-serif;
+        --code: "Spline Sans Mono", ui-monospace, Menlo, monospace;
         color-scheme: light;
       }
 
@@ -31,375 +36,1113 @@
       }
 
       html {
-        background: var(--air);
+        background: var(--green);
+        scrollbar-color: var(--ink) var(--green-deep);
       }
 
       body {
         margin: 0;
         color: var(--ink);
-        font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        font-family: var(--text);
         font-size: 1.125rem;
-        line-height: 1.45;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      ::selection {
+        background: var(--violet);
+        color: #fff;
       }
 
       a {
         color: inherit;
+        text-decoration-thickness: 1.5px;
+        text-underline-offset: 0.18em;
       }
 
       a:focus-visible,
       button:focus-visible {
-        outline: 2px solid var(--caret);
+        outline: 3px solid var(--violet);
         outline-offset: 3px;
+        box-shadow: 0 0 0 6px #fff;
       }
 
-      .page {
-        width: min(68rem, calc(100% - 2.5rem));
+      .wrap {
+        width: min(76rem, calc(100% - 2.5rem));
         margin: 0 auto;
-        padding: 1.75rem 0 4rem;
       }
 
-      header {
+      /* ---------- top bar (on the green) ---------- */
+      .bar {
         display: flex;
         justify-content: space-between;
         align-items: baseline;
         gap: 1rem;
-        font-family: system-ui, sans-serif;
-        font-size: 0.95rem;
+        padding: 1.1rem 0 1rem;
+        color: #fff;
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 1.35rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
       }
 
-      header a {
-        text-decoration-thickness: 1px;
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .brand svg {
+        width: 1.9rem;
+        height: 1.9rem;
+        flex: none;
+      }
+
+      .bar a {
+        font-family: var(--text);
+        font-weight: 600;
+        font-size: 1rem;
+        letter-spacing: 0.02em;
+        text-transform: none;
+      }
+
+      .bar a:focus-visible,
+      footer a:focus-visible {
+        outline-color: #fff;
+        box-shadow: none;
+      }
+
+      /* ---------- the form ---------- */
+      .sheet {
+        position: relative;
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 2px;
+        padding: 2px;
+        background: var(--ink);
+      }
+
+      .cell {
+        position: relative;
+        background: var(--sheet);
+        padding: 1.5rem 1.25rem 1rem;
+        min-width: 0;
+      }
+
+      .cell > .label {
+        position: absolute;
+        top: 0.4rem;
+        left: 0.7rem;
+        font-weight: 700;
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+
+      .c-code {
+        grid-column: span 7;
+        grid-row: span 2;
+        padding: 0;
+      }
+      .c-items {
+        grid-column: span 5;
+        min-height: 18.5rem;
+      }
+      .c-exempt {
+        grid-column: span 5;
+      }
+      .c-declare {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 26rem);
+        align-items: center;
+        gap: 0.4rem 1.5rem;
+        padding: 1.5rem 1.25rem 1.1rem;
+      }
+      .c-declare .declare {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      .c-declare .sign {
+        grid-column: 1 / 3;
+        grid-row: 2;
+      }
+      .sign {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 0.2rem 0.8rem;
+        margin-top: 0.4rem;
+        padding-top: 0.25rem;
+        border-top: 1.5px solid var(--ink);
+      }
+      .sign code {
+        white-space: nowrap;
+      }
+      .sign span {
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .c-declare .cleared {
+        grid-column: 2;
+        grid-row: 1;
+      }
+      .c-declare .install {
+        grid-column: 3;
+        grid-row: 1 / span 2;
+      }
+      .c-declare .install {
+        display: flex;
+        flex-direction: column;
+        gap: 0.7rem;
+      }
+      .label.flat {
+        position: static;
+        display: block;
+        padding: 0.4rem 0.7rem 0.3rem;
+        background: #fff;
+        border-bottom: 2px solid var(--ink);
+      }
+
+      .hero {
+        padding: 1.2rem 0 2.8rem;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-weight: 400;
+      }
+
+      .hero .code {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem 0.8rem;
+      }
+
+      .hero .id {
+        padding: 0.12em 0.42em;
+        border: 3px solid var(--ink);
+        background: var(--ink);
+        color: var(--token);
+        font: 700 clamp(1.7rem, 4.4vw, 3.5rem) / 1.1 var(--code);
+        letter-spacing: -0.02em;
+      }
+
+      .hero .and {
+        color: var(--on-green);
+        font: 700 clamp(0.8rem, 1.4vw, 1rem) / 1 var(--text);
+        font-style: normal;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .hero .click {
+        display: block;
+        margin-top: 1.1rem;
+        color: #fff;
+        font: 900 clamp(2.4rem, 6.2vw, 4.8rem) / 0.95 var(--display);
+        letter-spacing: -0.005em;
+        text-transform: uppercase;
+      }
+
+      .hero .deps {
+        display: block;
+        margin-top: 0.9rem;
+        color: #fff;
+        font: 600 clamp(1.35rem, 2.6vw, 2rem) / 1.25 var(--text);
+        text-decoration: underline;
+        text-decoration-color: var(--token);
+        text-decoration-thickness: 3px;
+        text-decoration-skip-ink: none;
         text-underline-offset: 0.2em;
       }
 
-      h1 {
-        max-width: 16ch;
-        margin: 1.6rem 0 0.6rem;
-        font-size: clamp(2.35rem, 5.2vw, 3.6rem);
-        font-weight: 500;
-        letter-spacing: -0.03em;
-        line-height: 0.98;
+      .hero .end {
+        white-space: nowrap;
       }
 
-      .deck {
-        max-width: 38rem;
-        margin: 0 0 1.35rem;
-        color: var(--muted);
+      .hero .point {
+        display: inline-block;
+        margin-left: 0.45em;
+        font-size: 1.05em;
+        line-height: 1;
+        text-decoration: none;
       }
 
-      .editor {
-        position: relative;
-        background: var(--paper);
-        border: 1px solid #d9d3c7;
-        border-radius: 10px;
-        box-shadow: 0 18px 40px rgba(40, 62, 74, 0.08);
-        overflow: hidden;
+      .hero .sub {
+        max-width: 50ch;
+        margin: 1.4rem 0 1.7rem;
+        color: var(--on-green);
+        font-size: 1.2rem;
       }
 
-      .tab {
+      .hero .sub code {
+        color: #fff;
+        font-weight: 600;
+      }
+
+      .hero .cta {
         display: flex;
-        justify-content: space-between;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 1rem;
-        padding: 0.55rem 0.85rem;
-        background: var(--gutter);
-        border-bottom: 1px solid var(--rule);
-        font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
-        font-size: 0.78rem;
-        color: var(--muted);
+        gap: 1rem 1.25rem;
       }
 
-      .action {
-        margin-right: auto;
-        color: transparent;
-        transition: color 0.25s ease;
+      .hero .stamp-btn {
+        display: inline-block;
+        padding: 0.75rem 1.4rem 0.65rem;
+        font-size: 2rem;
       }
 
-      .editor.offer-memo .action,
-      .editor.offer-callback .action {
+      .hero .cmd {
+        max-width: 100%;
+        border-color: #fff;
+      }
+      .hero .cmd code {
+        background: transparent;
+        color: #fff;
+      }
+      .hero .cmd button {
+        border-left-color: #fff;
+        background: transparent;
+        color: #fff;
+      }
+      .hero .cmd button:hover {
+        background: #fff;
         color: var(--ink);
       }
 
-      .editor.offer-memo .action::before {
-        content: "Extract in useMemo";
+      code,
+      .code {
+        font-family: var(--code);
+        font-size: 0.86em;
       }
 
-      .editor.offer-callback .action::before {
+      pre code {
+        font-size: 1em;
+      }
+
+      /* editor strip + code */
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.45rem 0.9rem 0.4rem;
+        background: var(--tint);
+        border-bottom: 2px solid var(--ink);
+        font-family: var(--code);
+        font-size: 0.78rem;
+        color: var(--ink-soft);
+      }
+
+      .tab .action {
+        margin-right: auto;
+        color: transparent;
+        font-weight: 600;
+        transition: color 0.2s ease;
+      }
+
+      .sheet.offer-memo .action,
+      .sheet.offer-callback .action,
+      .sheet.offer-inline .action {
+        color: var(--ink);
+      }
+      .sheet.offer-memo .action::before {
+        content: "Extract in useMemo";
+      }
+      .sheet.offer-callback .action::before,
+      .sheet.offer-inline .action::before {
         content: "Extract in useCallback";
       }
 
-      .again {
-        border: 0;
-        background: transparent;
+      .replay {
+        position: absolute;
+        right: 0.75rem;
+        bottom: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        border: 2px solid var(--ink);
+        background: #fff;
         color: var(--ink);
-        font: inherit;
+        font: 700 0.78rem/1 var(--text);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0.5rem 0.7rem 0.45rem;
         cursor: pointer;
-        padding: 0.15rem 0.2rem;
       }
-
-      .again:hover {
-        color: var(--caret);
+      .replay:hover {
+        background: var(--ink);
+        color: #fff;
+      }
+      .replay:active {
+        transform: translateY(1px);
       }
 
       pre {
         margin: 0;
-        padding: 0.85rem 0 1rem;
+        padding: 0.9rem 0 1.05rem;
         overflow-x: auto;
-        font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
-        font-size: 0.82rem;
-        line-height: 1.7;
+        font-family: var(--code);
+        font-size: 0.8125rem;
+        line-height: 1.75;
+        scrollbar-color: var(--ink) var(--tint);
       }
 
       .line {
         display: grid;
-        grid-template-columns: 2rem minmax(0, 1fr);
-        min-height: 1.7em;
-        transition: background 0.3s ease;
+        grid-template-columns: 2.1rem max-content;
+        min-height: 1.75em;
       }
 
-      .editor.show-caret-label .line-label,
-      .editor.offer-memo .line-label,
-      .editor.show-caret-handle .line-handle,
-      .editor.offer-callback .line-handle {
-        background: #fff4ec;
-      }
-
-      .mark {
+      .line .gutter {
         position: relative;
       }
 
-      .line code,
-      .clip code {
+      .line code {
         display: block;
-        padding-right: 1.25rem;
+        padding-right: 1.5rem;
         white-space: pre;
       }
 
-      .deck code,
-      .note code {
-        font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
-        font-size: 0.92em;
+      .sheet.offer-memo .l-label,
+      .sheet.offer-callback .l-handle,
+      .sheet.offer-inline .l-inline {
+        background: #fdebe8;
       }
 
-      .kw {
-        color: var(--kw);
+      .bulb {
+        position: absolute;
+        left: 0.45rem;
+        top: 0.3rem;
+        width: 1.15rem;
+        height: 1.15rem;
+        opacity: 0;
+        transform: scale(0.6);
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
       }
-      .hook {
-        color: var(--hook);
-      }
-      .fn {
-        color: var(--fn);
-      }
-      .jsx {
-        color: var(--jsx);
-      }
-      .punct {
-        color: var(--punct);
+      .sheet.offer-memo .l-label .bulb,
+      .sheet.offer-callback .l-handle .bulb,
+      .sheet.offer-inline .l-inline .bulb {
+        opacity: 1;
+        transform: none;
       }
 
       .caret {
         display: inline-block;
-        width: 1px;
+        width: 2px;
         height: 1.05em;
         margin-left: -1px;
         background: transparent;
-        transform: translateY(0.16em);
+        transform: translateY(0.18em);
       }
-
-      .editor.show-caret-label .name-label .caret,
-      .editor.show-caret-handle .name-handle .caret {
-        background: var(--caret);
+      .sheet.caret-label .n-label .caret,
+      .sheet.caret-handle .n-handle .caret,
+      .sheet.caret-inline .n-inline .caret {
+        background: var(--red);
         animation: blink 1.05s steps(1) infinite;
       }
-
       @keyframes blink {
         50% {
           opacity: 0;
         }
       }
 
-      .bulb {
-        position: absolute;
-        left: 0.32rem;
-        top: 0.22rem;
-        width: 1.15rem;
-        height: 1.15rem;
-        opacity: 0;
-        transform: scale(0.6);
-        transition:
-          opacity 0.25s ease,
-          transform 0.25s ease;
+      .kw {
+        color: var(--violet);
+        font-weight: 600;
       }
-
-      .editor.offer-memo .line-label .bulb,
-      .editor.offer-callback .line-handle .bulb {
-        opacity: 1;
-        transform: none;
+      .str {
+        color: var(--green);
+      }
+      .hook {
+        color: var(--red);
+        font-weight: 600;
+      }
+      .jsx {
+        color: var(--ink-soft);
       }
 
       .ins {
+        text-indent: 0;
         display: inline-block;
         max-width: 0;
         opacity: 0;
         overflow: hidden;
         vertical-align: bottom;
-        white-space: nowrap;
+        white-space: pre;
         transition:
-          max-width 0.5s cubic-bezier(0.2, 0.7, 0.2, 1),
-          opacity 0.35s ease;
-      }
-
-      .editor.wrap-memo .memo-open,
-      .editor.wrap-memo .memo-deps,
-      .editor.wrap-callback .cb-open,
-      .editor.wrap-callback .cb-deps {
-        max-width: 22rem;
-        opacity: 1;
-      }
-
-      .import-line {
-        min-height: 0;
-      }
-
-      .import-line .clip {
-        display: grid;
-        grid-template-rows: 0fr;
-        transition: grid-template-rows 0.4s ease;
-      }
-
-      .import-line .clip code {
-        overflow: hidden;
-        min-height: 0;
-      }
-
-      .editor.wrap-memo .import-line .clip {
-        grid-template-rows: 1fr;
-      }
-
-      .dep {
-        border-radius: 2px;
-      }
-
-      .editor.wrap-memo .dep-memo,
-      .editor.wrap-callback .dep-cb {
-        animation: land 0.9s ease;
-      }
-
-      @keyframes land {
-        0% {
-          background: var(--land);
-        }
-        100% {
-          background: transparent;
-        }
-      }
-
-      .extra-name {
-        display: inline-block;
-        max-width: 0;
-        opacity: 0;
-        overflow: hidden;
-        vertical-align: bottom;
-        white-space: nowrap;
-        transition:
-          max-width 0.4s ease,
+          max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
           opacity 0.3s ease;
       }
-
-      .editor.wrap-callback .extra-name {
+      .sheet.wrap-memo .m-ins,
+      .sheet.wrap-callback .c-ins {
+        max-width: 24rem;
+        opacity: 1;
+      }
+      .sheet.wrap-inline .i-line {
+        max-width: 40rem;
+        opacity: 1;
+      }
+      .sheet.wrap-inline .i-name {
+        max-width: 9rem;
+        opacity: 1;
+      }
+      .outs {
+        display: inline-block;
+        max-width: 24rem;
+        overflow: hidden;
+        vertical-align: bottom;
+        white-space: pre;
+        text-indent: 0;
+        transition:
+          max-width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 0.3s ease;
+      }
+      .sheet.wrap-inline .outs {
+        max-width: 0;
+        opacity: 0;
+      }
+      .sheet.wrap-memo .m-import,
+      .sheet.wrap-callback .c-import {
         max-width: 9rem;
         opacity: 1;
       }
 
-      .beats {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.35rem 1.25rem;
-        margin: 1.1rem 0 0;
-        font-family: system-ui, sans-serif;
+      .import-line {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.4s ease;
+        min-height: 0;
+      }
+      .import-line > div {
+        overflow: hidden;
+        min-height: 0;
+      }
+      .sheet.wrap-memo .import-line {
+        grid-template-rows: 1fr;
+      }
+
+      .dep {
+        outline: 2px solid transparent;
+        outline-offset: 1px;
+      }
+      .sheet.wrap-memo .dep-label,
+      .sheet.wrap-callback .dep-handle,
+      .sheet.wrap-inline .dep-inline {
+        outline-color: var(--violet);
+      }
+
+      /* items carried */
+      .carry {
+        display: grid;
+        grid-template-columns: 6.5rem minmax(0, 1fr);
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 3rem;
+        padding: 0.5rem 0;
+        border-bottom: 1.5px solid var(--ink);
+      }
+
+      .carry .bind {
         font-size: 0.95rem;
-        color: #8ea0aa;
+        color: var(--ink-soft);
       }
 
-      .beats span {
-        transition: color 0.3s ease;
-      }
-
-      .editor.show-caret-label ~ .beats [data-beat="name"],
-      .editor.show-caret-handle ~ .beats [data-beat="name"],
-      .editor.offer-memo ~ .beats [data-beat="bulb"],
-      .editor.offer-callback ~ .beats [data-beat="bulb"],
-      .editor.wrap-memo ~ .beats [data-beat="array"],
-      .editor.wrap-callback ~ .beats [data-beat="array"] {
+      .carry .bind code {
+        font-size: 0.8125rem;
+        font-weight: 600;
         color: var(--ink);
       }
 
-      .slip {
+      .carry .item {
+        justify-self: start;
+      }
+
+      .item {
+        font-family: var(--code);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        padding: 0.2rem 0.5rem;
+        color: #fff;
+        background: var(--violet);
+        opacity: 0;
+        transform: translateY(0.4rem);
+        transition:
+          opacity 0.25s ease 0.25s,
+          transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.25s;
+      }
+      .sheet.wrap-memo .item-label,
+      .sheet.wrap-callback .item-handle,
+      .sheet.wrap-inline .item-inline {
+        opacity: 1;
+        transform: none;
+      }
+
+      .none {
+        margin: 0.9rem 0 0;
+        font-size: 0.95rem;
+        color: var(--ink-soft);
+      }
+
+      /* leader lines */
+      .leaders {
         position: absolute;
-        right: 1.15rem;
-        bottom: 0.95rem;
-        width: 9.2rem;
-        padding: 0.55rem 0.7rem 0.45rem;
-        background: #fffdf8;
-        border: 1px solid #e6d8b8;
-        border-radius: 2px 8px 3px 3px;
-        box-shadow: 2px 8px 16px rgba(70, 56, 28, 0.08);
-        transform: rotate(-2deg);
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: visible;
+      }
+      .leaders path {
+        fill: none;
+        stroke: var(--violet);
+        stroke-width: 1.5;
+        stroke-dasharray: 1;
+        stroke-dashoffset: 1;
+        transition: stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s;
+      }
+      .sheet.wrap-memo .lead-label,
+      .sheet.wrap-callback .lead-handle,
+      .sheet.wrap-inline .lead-inline {
+        stroke-dashoffset: 0;
+      }
+
+      /* exempt */
+      .exempt {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .exempt li,
+      .refused li {
+        position: relative;
+        padding-left: 1.8rem;
+      }
+      .exempt li::before,
+      .refused li::before {
+        content: "";
+        position: absolute;
+        left: 0.1rem;
+        top: 0.72em;
+        width: 0.95rem;
+        height: 0.95rem;
+        border: 2px solid var(--ink);
+        background:
+          linear-gradient(45deg, transparent 43%, var(--ink) 43%, var(--ink) 57%, transparent 57%),
+          linear-gradient(-45deg, transparent 43%, var(--ink) 43%, var(--ink) 57%, transparent 57%);
+      }
+      .refused li::before {
+        border-color: var(--violet);
+        background:
+          linear-gradient(45deg, transparent 43%, var(--violet) 43%, var(--violet) 57%, transparent 57%),
+          linear-gradient(-45deg, transparent 43%, var(--violet) 43%, var(--violet) 57%, transparent 57%);
+      }
+      .exempt li {
+        padding-top: 0.38rem;
+        padding-bottom: 0.38rem;
+        border-bottom: 1.5px solid var(--ink);
+        font-size: 1rem;
+      }
+      .exempt code {
+        font-size: 0.8125rem;
+        font-weight: 600;
+      }
+
+      /* declaration + stamp button */
+      .declare {
+        margin: 0;
+        font-size: 1.125rem;
+        text-wrap: balance;
+      }
+
+      .stamp-btn {
+        display: block;
+        padding: 0.7rem 1rem 0.6rem;
+        background: var(--red);
+        color: #fff;
+        font-family: var(--display);
+        font-weight: 900;
+        font-size: 2.1rem;
+        line-height: 1;
+        letter-spacing: 0.03em;
+        text-align: center;
+        text-decoration: none;
+        text-transform: uppercase;
+        border: 3px solid var(--ink);
+        transition:
+          background 0.15s ease,
+          transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .stamp-btn:hover {
+        background: var(--ink);
+      }
+      .stamp-btn:active {
+        transform: scale(0.98);
+      }
+
+      .cmd {
+        display: flex;
+        align-items: stretch;
+        border: 2px solid var(--ink);
+      }
+      .cmd code {
+        flex: 1;
+        min-width: 0;
+        padding: 0.45rem 0.65rem;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        font-size: 0.78rem;
+        background: var(--tint);
+      }
+      .cmd button {
+        border: 0;
+        border-left: 2px solid var(--ink);
+        background: #fff;
+        color: var(--ink);
+        font: 700 0.78rem/1 var(--text);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0 0.8rem;
+        cursor: pointer;
+      }
+      .cmd button:hover {
+        background: var(--ink);
+        color: #fff;
+      }
+
+      /* the veil that offers a replay once the demo has finished */
+      .veil {
+        position: absolute;
+        left: 0;
+        width: 100%;
+        z-index: 4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.8);
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          opacity 0.35s ease,
+          visibility 0s linear 0.35s;
+      }
+      .sheet.done .veil {
+        opacity: 1;
+        visibility: visible;
+        transition-delay: 0s;
+      }
+      .sheet.dismissed .veil {
+        opacity: 0;
+        visibility: hidden;
+      }
+      .veil-inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+      }
+      .replay-big {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.9rem 2.2rem 0.8rem;
+        border: 3px solid var(--ink);
+        background: var(--ink);
+        color: #fff;
+        font-family: var(--display);
+        font-weight: 900;
+        font-size: clamp(2rem, 4vw, 3rem);
+        line-height: 1;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition:
+          background 0.15s ease,
+          transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .replay-big svg {
+        width: 0.85em;
+        height: 0.85em;
+        flex: none;
+      }
+      .replay-big:hover {
+        background: var(--violet);
+        border-color: var(--violet);
+      }
+      .replay-big:active {
+        transform: scale(0.98);
+      }
+      .veil-skip {
+        border: 0;
+        background: transparent;
+        color: var(--ink);
+        font: 700 0.95rem/1 var(--text);
+        text-decoration: underline;
+        text-decoration-thickness: 1.5px;
+        text-underline-offset: 0.2em;
+        cursor: pointer;
+        padding: 0.3rem 0.4rem;
+      }
+      .veil-skip:hover {
+        color: var(--violet);
+      }
+
+      /* rubber stamp: lands once the demo finishes */
+      .cleared {
+        margin: 0 0.6rem;
+        rotate: -7deg;
+        scale: 1.5;
+        padding: 0.15rem 0.9rem 0.05rem;
+        border: 4px solid var(--violet);
+        outline: 2px solid var(--violet);
+        outline-offset: 3px;
+        color: var(--violet);
+        font-family: "Big Shoulders Stencil", var(--display);
+        font-weight: 800;
+        filter: url(#ink);
+        font-size: clamp(2rem, 4.4vw, 3.4rem);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        line-height: 1.05;
+        mix-blend-mode: multiply;
+        opacity: 0;
         pointer-events: none;
       }
-
-      .slip-kicker {
-        display: block;
-        margin-bottom: 0.35rem;
-        font-family: "Iowan Old Style", Palatino, Georgia, serif;
-        font-size: 0.95rem;
-        color: #8d7044;
+      .sheet.cleared-on .cleared {
+        opacity: 0.92;
+        scale: 1;
+        transition:
+          opacity 0.12s ease,
+          scale 0.22s cubic-bezier(0.2, 0.9, 0.2, 1);
       }
 
-      .ruled {
-        display: block;
-        min-height: 1.15rem;
-        border-bottom: 1px solid #f0e4c8;
-        font-family: ui-monospace, "SF Mono", Menlo, monospace;
-        font-size: 0.68rem;
-        line-height: 1.15rem;
-        color: transparent;
-        transition: color 0.35s ease;
+      /* ---------- the rest of the form ---------- */
+      main > section {
+        margin-top: 4.5rem;
       }
 
-      .editor.wrap-memo .ruled-memo,
-      .editor.wrap-callback .ruled-cb {
+      .part {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 2px;
+        padding: 2px;
+        background: var(--ink);
+      }
+
+      .part > .cell {
+        padding: 1.6rem 1.25rem 1.1rem;
+      }
+
+      .part h2 {
+        margin: 0 0 0.5rem;
+        font-family: var(--display);
+        font-weight: 900;
+        font-size: clamp(2.1rem, 4.4vw, 3.25rem);
+        line-height: 0.95;
+        text-transform: uppercase;
+        text-wrap: balance;
+      }
+
+      .part p {
+        max-width: 62ch;
+        margin: 0 0 0.9rem;
+      }
+
+      .p-head {
+        grid-column: span 5;
+        background: var(--tint);
+      }
+      .p-body {
+        grid-column: span 7;
+      }
+      .p-full {
+        grid-column: 1 / -1;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th {
+        padding: 0.3rem 0.8rem 0.5rem 0;
+        text-align: left;
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      td {
+        padding: 0.65rem 0.8rem 0.65rem 0;
+        border-top: 1.5px solid var(--ink);
+        vertical-align: top;
+      }
+      td code {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+
+      .narrow {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 1.75rem;
+        margin: 0.4rem 0 0;
+      }
+      .narrow div {
+        padding: 0.55rem 0;
+        border-top: 1.5px solid var(--ink);
+      }
+      .narrow dt {
+        font-family: var(--code);
+        font-size: 0.8125rem;
+        font-weight: 600;
+      }
+      .facts dt {
+        font-family: var(--text);
+        font-size: 0.78rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+      }
+      .facts dd {
+        margin-top: 0.2rem;
         color: var(--ink);
+        font-size: 1.0625rem;
+      }
+      .narrow dd {
+        margin: 0.15rem 0 0;
+        color: var(--ink-soft);
       }
 
-      .note {
-        max-width: 36rem;
-        margin: 1.75rem 0 0;
-        color: var(--muted);
+      .refused {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        columns: 2 16rem;
+        column-gap: 1.75rem;
+      }
+      .refused li {
+        break-inside: avoid;
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-top: 1.5px solid var(--ink);
+      }
+      .refused strong {
+        display: block;
+        font-weight: 700;
+      }
+
+      .p-head {
+        position: relative;
+      }
+      .refused-stamp {
+        display: inline-block;
+        margin-top: 0.6rem;
+        padding: 0.1rem 0.8rem 0;
+        border: 4px solid var(--violet);
+        outline: 2px solid var(--violet);
+        outline-offset: 3px;
+        color: var(--violet);
+        font-family: "Big Shoulders Stencil", var(--display);
+        font-weight: 800;
+        font-size: 2.2rem;
+        letter-spacing: 0.06em;
+        line-height: 1.1;
+        text-transform: uppercase;
+        rotate: 5deg;
+        mix-blend-mode: multiply;
+        filter: url(#ink);
+        pointer-events: none;
+      }
+      @media (min-width: 861px) {
+        .flip .p-head {
+          order: 2;
+        }
+      }
+
+      .pair {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2px;
+        padding: 2px;
+        margin: 0 0 1.2rem;
+        background: var(--ink);
+      }
+      .pair:last-child {
+        margin-bottom: 0;
+      }
+      .snip {
+        padding: 0.3rem 0 0;
+        line-height: 1.8;
+        white-space: pre;
+      }
+      .snip .pick {
+        outline: 2px solid var(--violet);
+        outline-offset: 1px;
+      }
+      @media (max-width: 1279px) {
+        .part.inline > .p-head,
+        .part.inline > .p-body {
+          grid-column: 1 / -1;
+        }
+      }
+
+      .stamp-btn.close {
+        margin-top: 1.2rem;
+        font-size: 2.2rem;
       }
 
       footer {
-        margin-top: 3rem;
-        font-family: system-ui, sans-serif;
-        font-size: 0.9rem;
-        color: var(--muted);
+        margin-top: 3.5rem;
+        padding: 1.2rem 0 2.4rem;
+        border-top: 2px solid var(--green-deep);
+        color: var(--on-green);
+        font-size: 0.95rem;
       }
 
-      @media (max-width: 640px) {
-        .page {
-          width: min(68rem, calc(100% - 1.4rem));
-        }
-
-        h1 {
-          margin-top: 1.75rem;
-        }
-
-        pre {
-          font-size: 0.78rem;
-        }
-
-        .slip {
+      /* ---------- narrower screens ---------- */
+      @media (max-width: 1279px) {
+        .leaders {
           display: none;
+        }
+      }
+
+      @media (min-width: 861px) and (max-width: 1279px) {
+        .c-code {
+          grid-column: 1 / -1;
+          grid-row: auto;
+        }
+        .c-items,
+        .c-exempt {
+          grid-column: span 6;
+          grid-row: auto;
+        }
+        .c-items {
+          min-height: 0;
+        }
+      }
+
+      @media (max-width: 860px) {
+        .c-code,
+        .c-items,
+        .c-exempt,
+        .p-head,
+        .p-body {
+          grid-column: 1 / -1;
+          grid-row: auto;
+        }
+        .c-items {
+          min-height: 0;
+        }
+        .veil {
+          align-items: flex-start;
+        }
+        .veil-inner {
+          position: sticky;
+          top: 35vh;
+          margin-top: 3rem;
+        }
+        .c-declare {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .c-declare .declare,
+        .c-declare .sign,
+        .c-declare .cleared,
+        .c-declare .install {
+          grid-column: 1;
+          grid-row: auto;
+        }
+        .cleared {
+          justify-self: start;
+          margin: 0.4rem 0 0.4rem 0.3rem;
+        }
+        .refused {
+          columns: 1;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .wrap {
+          width: min(76rem, calc(100% - 1.4rem));
+        }
+        .narrow {
+          grid-template-columns: 1fr;
+        }
+        .hero .id {
+          border-width: 2px;
+        }
+        .hero .stamp-btn {
+          display: block;
+          text-align: center;
+        }
+        pre {
+          font-size: 0.75rem;
+        }
+        .snip {
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+        .line {
+          grid-template-columns: 1rem minmax(0, 1fr);
+        }
+        .line code {
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          padding: 0 0.6rem 0 4ch;
+          text-indent: -4ch;
+        }
+        .tab .action {
+          display: none;
+        }
+        .ins.i-line {
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+        }
+        .carry {
+          grid-template-columns: 7rem minmax(0, 1fr);
+        }
+        .stamp-btn,
+        .stamp-btn.close {
+          font-size: 1.8rem;
+        }
+        table,
+        tbody,
+        tr,
+        td {
+          display: block;
+        }
+        thead {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip-path: inset(50%);
+        }
+        tr {
+          padding: 0.7rem 0;
+          border-top: 1.5px solid var(--ink);
+        }
+        td {
+          padding: 0.15rem 0;
+          border: 0;
+        }
+        td::before {
+          content: attr(data-label);
+          display: block;
+          margin-top: 0.3rem;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
+          color: var(--ink-soft);
         }
       }
 
@@ -410,7 +1153,6 @@
           animation: none !important;
           transition: none !important;
         }
-
         .caret {
           background: transparent !important;
         }
@@ -418,68 +1160,384 @@
     </style>
   </head>
   <body>
-    <div class="page">
-      <header>
-        <span>vscode-react-memoize</span>
-        <a href="https://github.com/apperside/vscode-react-memoize">Source</a>
-      </header>
-
-      <h1>The array is the annoying part.</h1>
-      <p class="deck">
-        Put the cursor on a variable or a function inside a component. The lightbulb wraps it in
-        <code>useMemo</code> or <code>useCallback</code>, and fills the dependency array the way
-        <code>exhaustive-deps</code> would.
-      </p>
-
-      <div class="editor" id="editor">
-        <div class="tab">
-          <span>Profile.tsx</span>
-          <span class="action"></span>
-          <button class="again" type="button" id="again">Play again</button>
-        </div>
-        <pre>
-<span class="line import-line"><span class="mark"></span><span class="clip"><code><span class="kw">import</span> { useMemo<span class="extra-name">, useCallback</span> } <span class="kw">from</span> <span class="fn">"react"</span>;
-</code></span></span>
-<span class="line"><span class="mark"></span><code><span class="kw">function</span> <span class="fn">Profile</span>({ user, onSelect }) {</code></span>
-<span class="line line-label"><span class="mark"><svg class="bulb" viewBox="0 0 24 24" aria-hidden="true"><path fill="#e25b1a" d="M12 1.8a6.6 6.6 0 0 0-3.6 12.1c.3.2.5.5.5.8l.3 1.5h5.6l.3-1.5c.1-.3.2-.6.5-.8A6.6 6.6 0 0 0 12 1.8Z"/><path fill="#1a242e" d="M9.2 17.4h5.6v1.2c0 1.3-1.1 2.2-2.8 2.2s-2.8-.9-2.8-2.2v-1.2Z"/><path stroke="#fff6ee" stroke-width="1.6" stroke-linecap="round" d="M12 6.2v3.4"/></svg></span><code>  <span class="kw">const</span> <span class="name-label">label<span class="caret"></span></span> = <span class="ins memo-open hook">useMemo(() =&gt;&nbsp;</span>user.name.toUpperCase()<span class="ins memo-deps">, [<span class="dep dep-memo">user.name</span>]</span><span class="ins memo-open hook">)</span>;</code></span>
-<span class="line line-handle"><span class="mark"><svg class="bulb" viewBox="0 0 24 24" aria-hidden="true"><path fill="#e25b1a" d="M12 1.8a6.6 6.6 0 0 0-3.6 12.1c.3.2.5.5.5.8l.3 1.5h5.6l.3-1.5c.1-.3.2-.6.5-.8A6.6 6.6 0 0 0 12 1.8Z"/><path fill="#1a242e" d="M9.2 17.4h5.6v1.2c0 1.3-1.1 2.2-2.8 2.2s-2.8-.9-2.8-2.2v-1.2Z"/><path stroke="#fff6ee" stroke-width="1.6" stroke-linecap="round" d="M12 6.2v3.4"/></svg></span><code>  <span class="kw">const</span> <span class="name-handle">handleSelect<span class="caret"></span></span> = <span class="ins cb-open hook">useCallback(</span>() =&gt; onSelect(user.id)<span class="ins cb-deps">, [<span class="dep dep-cb">onSelect</span>, <span class="dep dep-cb">user.id</span>]</span><span class="ins cb-open hook">)</span>;</code></span>
-<span class="line"><span class="mark"></span><code></code></span>
-<span class="line"><span class="mark"></span><code>  <span class="kw">return</span> &lt;<span class="jsx">button</span> onClick={handleSelect}&gt;{label}&lt;/<span class="jsx">button</span>&gt;;</code></span>
-<span class="line"><span class="mark"></span><code>}</code></span>
-        </pre>
-        <aside class="slip" aria-hidden="true">
-          <span class="slip-kicker">memo</span>
-          <span class="ruled ruled-memo">user.name</span>
-          <span class="ruled ruled-cb">onSelect, user.id</span>
-        </aside>
+    <svg width="0" height="0" aria-hidden="true" focusable="false" style="position: absolute">
+      <filter id="ink" x="-6%" y="-12%" width="112%" height="124%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="4" result="rough" />
+        <feDisplacementMap in="SourceGraphic" in2="rough" scale="3.2" xChannelSelector="R" yChannelSelector="G" result="edge" />
+        <feTurbulence type="fractalNoise" baseFrequency="0.5" numOctaves="3" seed="11" result="grain" />
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  6 0 0 0 -1.15" result="holes" />
+        <feComposite in="edge" in2="holes" operator="in" />
+      </filter>
+    </svg>
+    <div class="wrap">
+      <div class="bar">
+        <span class="brand">
+          <svg viewBox="0 0 128 128" aria-hidden="true" focusable="false"><path d="M46 26C36 26 34 30 34 40V52C34 59 30 64 22 64C30 64 34 69 34 76V88C34 98 36 102 46 102M82 26C92 26 94 30 94 40V52C94 59 98 64 106 64C98 64 94 69 94 76V88C94 98 92 102 82 102" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" /><g transform="translate(64 62) scale(1.08)"><path d="M0-26a19 19 0 0 0-11 34c3 2 4 5 4 8h14c0-3 1-6 4-8A19 19 0 0 0 0-26Z" fill="#dcdcaa"/><rect x="-7" y="19" width="14" height="5" fill="#fff"/><rect x="-5" y="26" width="10" height="5" fill="#fff"/></g></svg>
+          React Easy Memoize
+        </span>
+        <a href="https://github.com/apperside/vscode-react-memoize">Source on GitHub</a>
       </div>
 
-      <p class="beats">
-        <span data-beat="name">Cursor on the name</span>
-        <span data-beat="bulb">The lightbulb offers one action</span>
-        <span data-beat="array">The array fills in</span>
-      </p>
+      <header class="hero">
+        <h1>
+          <span class="code"><b class="id">useMemo</b><i class="and">and</i><b class="id">useCallback</b></span>
+          <span class="click">In one click</span>
+          <span class="deps">with the dependency array already <span class="end">filled in<span class="point" aria-hidden="true">👈</span></span></span>
+        </h1>
+        <p class="sub">
+          Put the cursor on a variable, a function, or a prop written inline in your JSX, then open the
+          lightbulb. The array is the one <code>exhaustive-deps</code> would ask for.
+        </p>
+        <div class="cta">
+          <a class="stamp-btn" href="https://marketplace.visualstudio.com/items?itemName=apperside.vscode-react-memoize">Install for VS Code</a>
+          <div class="cmd">
+            <code>code --install-extension apperside.vscode-react-memoize</code>
+            <button type="button" data-copy>Copy</button>
+          </div>
+        </div>
+      </header>
 
-      <p class="note">
-        A function becomes <code>useCallback</code>. Anything else becomes <code>useMemo</code>. Setters,
-        refs, and imports stay out of the array. JavaScript, JSX, TypeScript, and TSX.
-      </p>
+      <main>
+        <!-- The no-JS and reduced-motion state is the finished one: wrapped, cleared. -->
+        <div class="sheet wrap-memo wrap-callback wrap-inline cleared-on" id="sheet">
+          <div class="cell c-code">
+            <span class="label flat">1. Code to declare</span>
+            <div class="tab">
+              <span>Profile.tsx</span>
+              <span class="action"></span>
+            </div>
+<pre tabindex="0" aria-label="Profile.tsx, the code the demo extracts"><span class="line import-line"><span class="gutter"></span><div><code><span class="kw">import</span> { useMemo<span class="ins c-import" aria-hidden="true">, useCallback</span> } <span class="kw">from</span> <span class="str">"react"</span>;</code></div></span>
+<span class="line"><span class="gutter"></span><code><span class="kw">function</span> Profile({ user, onSelect }) {</code></span>
+<span class="line l-label"><span class="gutter"><svg class="bulb" viewBox="0 0 24 24" aria-hidden="true"><path fill="#d62d20" d="M12 1.8a6.6 6.6 0 0 0-3.6 12.1c.3.2.5.5.5.8l.3 1.5h5.6l.3-1.5c.1-.3.2-.6.5-.8A6.6 6.6 0 0 0 12 1.8Z"/><path fill="#101820" d="M9.2 17.4h5.6v1.2c0 1.3-1.1 2.2-2.8 2.2s-2.8-.9-2.8-2.2v-1.2Z"/></svg></span><code>  <span class="kw">const</span> <span class="n-label">label<span class="caret"></span></span> = <span class="ins m-ins hook">useMemo(() =&gt; </span>user.name.toUpperCase()<span class="ins m-ins">, [<span class="dep dep-label" id="t-name">user.name</span>]</span><span class="ins m-ins hook">)</span>;</code></span>
+<span class="line l-handle"><span class="gutter"><svg class="bulb" viewBox="0 0 24 24" aria-hidden="true"><path fill="#d62d20" d="M12 1.8a6.6 6.6 0 0 0-3.6 12.1c.3.2.5.5.5.8l.3 1.5h5.6l.3-1.5c.1-.3.2-.6.5-.8A6.6 6.6 0 0 0 12 1.8Z"/><path fill="#101820" d="M9.2 17.4h5.6v1.2c0 1.3-1.1 2.2-2.8 2.2s-2.8-.9-2.8-2.2v-1.2Z"/></svg></span><code>  <span class="kw">const</span> <span class="n-handle">handleSelect<span class="caret"></span></span> = <span class="ins c-ins hook">useCallback(</span>() =&gt; onSelect(user.id)<span class="ins c-ins">, [<span class="dep dep-handle" id="t-onSelect">onSelect</span>, <span class="dep dep-handle" id="t-id">user.id</span>]</span><span class="ins c-ins hook">)</span>;</code></span>
+<span class="line l-newline"><span class="gutter"></span><code>  <span class="ins i-line"><span class="kw">const</span> onClose = <span class="hook">useCallback(</span>() =&gt; onSelect(null), [<span class="dep dep-inline" id="t-onSelect2">onSelect</span>]<span class="hook">)</span>;</span></code></span>
+<span class="line"><span class="gutter"></span><code>  <span class="kw">return</span> (</code></span>
+<span class="line l-inline"><span class="gutter"><svg class="bulb" viewBox="0 0 24 24" aria-hidden="true"><path fill="#d62d20" d="M12 1.8a6.6 6.6 0 0 0-3.6 12.1c.3.2.5.5.5.8l.3 1.5h5.6l.3-1.5c.1-.3.2-.6.5-.8A6.6 6.6 0 0 0 12 1.8Z"/><path fill="#101820" d="M9.2 17.4h5.6v1.2c0 1.3-1.1 2.2-2.8 2.2s-2.8-.9-2.8-2.2v-1.2Z"/></svg></span><code>    &lt;<span class="jsx">Tag</span> title={label} onClick={handleSelect} onClose={<span class="n-inline"><span class="caret"></span><span class="outs">() =&gt; onSelect(null)</span><span class="ins i-name">onClose</span></span>} /&gt;</code></span>
+<span class="line"><span class="gutter"></span><code>  );</code></span>
+<span class="line"><span class="gutter"></span><code>}</code></span></pre>
+            <button class="replay" type="button" id="replay">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" /></svg>
+              Play again
+            </button>
+          </div>
 
-      <footer>MIT · Visual Studio Code 1.85 or newer</footer>
+          <div class="cell c-items">
+            <span class="label">2. Items carried</span>
+            <div class="carry">
+              <span class="item item-label" id="i-name">user.name</span>
+              <span class="bind">for <code>label</code></span>
+            </div>
+            <div class="carry">
+              <span class="item item-handle" id="i-onSelect">onSelect</span>
+              <span class="bind">for <code>handleSelect</code></span>
+            </div>
+            <div class="carry">
+              <span class="item item-handle" id="i-id">user.id</span>
+              <span class="bind">for <code>handleSelect</code></span>
+            </div>
+            <div class="carry">
+              <span class="item item-inline" id="i-onSelect2">onSelect</span>
+              <span class="bind">for <code>onClose</code></span>
+            </div>
+            <p class="none">Each item is read by the code. None is a constant, a ref or a setter.</p>
+          </div>
+
+          <div class="cell c-exempt">
+            <span class="label">3. Exempt, not declared</span>
+            <ul class="exempt">
+              <li>Imports and values declared outside the component</li>
+              <li><code>const</code> strings, numbers and <code>null</code></li>
+              <li><code>useState</code> setters, <code>useReducer</code> dispatch</li>
+              <li><code>useRef</code>, <code>useEffectEvent</code>, <code>startTransition</code></li>
+              <li><code>ref.current</code></li>
+            </ul>
+          </div>
+
+          <div class="cell c-declare">
+            <span class="label">4. Declaration</span>
+            <p class="declare">Everything this code reads is listed in box 2, and nothing else. Nobody typed it.</p>
+            <div class="sign"><span>Declarant</span><code>React Easy Memoize</code></div>
+            <div class="install">
+              <a class="stamp-btn" href="https://marketplace.visualstudio.com/items?itemName=apperside.vscode-react-memoize">Install for VS Code</a>
+              <div class="cmd">
+                <code>code --install-extension apperside.vscode-react-memoize</code>
+                <button type="button" data-copy>Copy</button>
+              </div>
+            </div>
+            <span class="cleared" aria-hidden="true">Cleared</span>
+          </div>
+
+          <svg class="leaders" id="leaders" aria-hidden="true"></svg>
+          <div class="veil" id="veil">
+            <div class="veil-inner">
+              <button class="replay-big" type="button" id="replay-big">
+                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="square" /></svg>
+                Play again
+              </button>
+              <button class="veil-skip" type="button" id="veil-skip">Keep reading</button>
+            </div>
+          </div>
+        </div>
+
+        <section aria-labelledby="what">
+          <div class="part">
+            <div class="cell p-head">
+              <h2 id="what">What it wraps</h2>
+              <p>
+                A function becomes <code>useCallback</code>. Anything else becomes <code>useMemo</code>. You only
+                see the action that applies, and the hook is added to your existing <code>react</code> import.
+              </p>
+              <p>
+                If the file imports <code>React</code> as a namespace, the call is written
+                <code>React.useMemo</code> and the import is left alone.
+              </p>
+            </div>
+            <div class="cell p-body">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">You select</th>
+                    <th scope="col">You get</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td data-label="You select"><code>const label = user.name</code></td>
+                    <td data-label="You get"><code>const label = useMemo(() =&gt; user.name, [user.name])</code></td>
+                  </tr>
+                  <tr>
+                    <td data-label="You select"><code>const { name } = user</code></td>
+                    <td data-label="You get"><code>const { name } = useMemo(() =&gt; user, [user])</code></td>
+                  </tr>
+                  <tr>
+                    <td data-label="You select"><code>const handle = () =&gt; onSelect(id)</code></td>
+                    <td data-label="You get"><code>const handle = useCallback(() =&gt; onSelect(id), [onSelect, id])</code></td>
+                  </tr>
+                  <tr>
+                    <td data-label="You select"><code>function handle() { onSelect(id); }</code></td>
+                    <td data-label="You get"><code>const handle = useCallback(() =&gt; { onSelect(id); }, [onSelect, id])</code></td>
+                  </tr>
+                  <tr>
+                    <td data-label="You select"><code>onSelect={(row) =&gt; save(row.id)}</code> in JSX</td>
+                    <td data-label="You get">A named <code>useCallback</code> above the return, with parameter types read from the TypeScript language service</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="inline">
+          <div class="part flip inline">
+            <div class="cell p-head">
+              <h2 id="inline">Inline props too</h2>
+              <p>
+                An arrow function, an object or an array written straight into a JSX prop is a new value on every
+                render. Put the cursor on the value and the same lightbulb lifts it above the return as a named
+                <code>useCallback</code> or <code>useMemo</code>. The name comes from the prop and is ready to rename.
+              </p>
+              <p>
+                It is not offered inside a <code>useMemo</code> or <code>useCallback</code> callback, where the
+                value is already recreated only when that hook reruns, and not when the value reads something that
+                exists only inside a nested callback, like a <code>map</code> parameter.
+              </p>
+            </div>
+            <div class="cell p-body">
+              <div class="pair">
+                <div class="cell snip-box">
+                  <span class="label">Before</span>
+<pre class="snip" tabindex="0" aria-label="A handler written inline in a prop"><code><span class="kw">function</span> SaveBar({ id, save }: Props) {
+  <span class="kw">return</span> &lt;<span class="jsx">Button</span> onClick={<span class="pick">() =&gt; save(id)</span>} /&gt;;
+}</code></pre>
+                </div>
+                <div class="cell snip-box">
+                  <span class="label">After</span>
+<pre class="snip" tabindex="0" aria-label="The handler lifted into useCallback"><code><span class="kw">function</span> SaveBar({ id, save }: Props) {
+  <span class="kw">const</span> <span class="pick">onClick</span> = <span class="hook">useCallback(</span>() =&gt; save(id), [save, id]<span class="hook">)</span>;
+  <span class="kw">return</span> &lt;<span class="jsx">Button</span> onClick={<span class="pick">onClick</span>} /&gt;;
+}</code></pre>
+                </div>
+              </div>
+              <div class="pair">
+                <div class="cell snip-box">
+                  <span class="label">Before</span>
+<pre class="snip" tabindex="0" aria-label="An object written inline in a prop"><code><span class="kw">function</span> Board() {
+  <span class="kw">return</span> &lt;<span class="jsx">Grid</span> defaultSort={<span class="pick">{{ field: <span class="str">"date"</span>, sortType: <span class="str">"desc"</span> }}</span>} /&gt;;
+}</code></pre>
+                </div>
+                <div class="cell snip-box">
+                  <span class="label">After</span>
+<pre class="snip" tabindex="0" aria-label="The object lifted into useMemo"><code><span class="kw">function</span> Board() {
+  <span class="kw">const</span> <span class="pick">defaultSort</span> = <span class="hook">useMemo(</span>() =&gt; ({ field: <span class="str">"date"</span>, sortType: <span class="str">"desc"</span> }), []<span class="hook">)</span>;
+  <span class="kw">return</span> &lt;<span class="jsx">Grid</span> defaultSort={<span class="pick">defaultSort</span>} /&gt;;
+}</code></pre>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="narrow">
+          <div class="part">
+            <div class="cell p-head">
+              <h2 id="narrow">Only what the code reads</h2>
+              <p>
+                A prop is recorded as the value the expression actually reads, which is the array
+                <code>exhaustive-deps</code> would ask for if yours were empty.
+              </p>
+            </div>
+            <div class="cell p-body">
+              <dl class="narrow">
+                <div>
+                  <dt>user.name.toUpperCase()</dt>
+                  <dd>depends on <code>user.name</code>, not <code>user</code></dd>
+                </div>
+                <div>
+                  <dt>onSelect(user.id)</dt>
+                  <dd>depends on <code>onSelect</code> and <code>user.id</code></dd>
+                </div>
+                <div>
+                  <dt>props.onSelect(id)</dt>
+                  <dd>depends on <code>props</code> and <code>id</code>, because the method is called on <code>props</code></dd>
+                </div>
+                <div>
+                  <dt>const a = 1, b = props.b, c = 3</dt>
+                  <dd>extracting <code>b</code> leaves <code>a</code> and <code>c</code> as they were</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="quiet">
+          <div class="part flip">
+            <div class="cell p-head">
+              <h2 id="quiet">When the lightbulb stays quiet</h2>
+              <p>
+                The new hook call has to be unconditional. The action is offered only for a declaration that sits
+                directly in the body of a function component or a custom hook.
+              </p>
+              <span class="refused-stamp" aria-hidden="true">Not offered</span>
+            </div>
+            <div class="cell p-body">
+              <ul class="refused">
+                <li><strong>Inside an <code>if</code></strong>after a conditional <code>return</code> or <code>throw</code></li>
+                <li><strong>In a nested helper</strong>or in a function that is not a component or a hook</li>
+                <li><strong>Already memoized</strong>the initializer is <code>useMemo</code> or <code>useCallback</code></li>
+                <li><strong>Calls a hook</strong>the extracted code would call one</li>
+                <li><strong><code>var</code>, generators, overloads</strong>not extracted</li>
+                <li><strong>Classes</strong>the cursor is in a class</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="go">
+          <div class="part">
+            <div class="cell p-head">
+              <h2 id="go">Stop typing the array.</h2>
+              <a class="stamp-btn close" href="https://marketplace.visualstudio.com/items?itemName=apperside.vscode-react-memoize">Install for VS Code</a>
+            </div>
+            <div class="cell p-body">
+              <dl class="narrow facts">
+                <div>
+                  <dt>Languages</dt>
+                  <dd>JavaScript, JSX, TypeScript and TSX</dd>
+                </div>
+                <div>
+                  <dt>Requires</dt>
+                  <dd>Visual Studio Code 1.86 or newer</dd>
+                </div>
+                <div>
+                  <dt>Open the lightbulb</dt>
+                  <dd><code>Cmd+.</code> on macOS, <code>Ctrl+.</code> on Windows and Linux, or run Refactor from the Command Palette</dd>
+                </div>
+                <div>
+                  <dt>License</dt>
+                  <dd>MIT, <a href="https://github.com/apperside/vscode-react-memoize">source on GitHub</a></dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        MIT license ·
+        <a href="https://github.com/apperside/vscode-react-memoize">github.com/apperside/vscode-react-memoize</a>
+      </footer>
     </div>
 
     <script>
-      const editor = document.getElementById("editor");
+      const sheet = document.getElementById("sheet");
+      const leaders = document.getElementById("leaders");
+      const pairs = [
+        ["i-name", "t-name", "lead-label"],
+        ["i-onSelect", "t-onSelect", "lead-handle"],
+        ["i-id", "t-id", "lead-handle"],
+        ["i-onSelect2", "t-onSelect2", "lead-inline"],
+      ];
       const steps = [
-        ["show-caret-label", 1300],
-        ["offer-memo", 1050],
-        ["wrap-memo", 1500],
-        ["show-caret-handle", 900],
-        ["offer-callback", 1050],
-        ["wrap-callback", 2400],
+        ["caret-label", 1100],
+        ["offer-memo", 1000],
+        ["wrap-memo", 1700],
+        ["caret-handle", 900],
+        ["offer-callback", 1000],
+        ["wrap-callback", 1500],
+        ["caret-inline", 1000],
+        ["offer-inline", 1000],
+        ["wrap-inline", 1900],
+        ["cleared-on", 3600],
       ];
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const wide = matchMedia("(min-width: 1280px)");
       let timers = [];
+      let frame = 0;
+
+      const veil = document.getElementById("veil");
+
+      function placeVeil() {
+        const origin = sheet.getBoundingClientRect();
+        const cells = [".c-code", ".c-items", ".c-exempt"].map((query) =>
+          document.querySelector(query).getBoundingClientRect(),
+        );
+        const top = Math.min(...cells.map((rect) => rect.top)) - origin.top;
+        const bottom = Math.max(...cells.map((rect) => rect.bottom)) - origin.top;
+        veil.style.top = `${top}px`;
+        veil.style.height = `${bottom - top}px`;
+      }
+
+      function drawLeaders() {
+        placeVeil();
+        leaders.replaceChildren();
+        if (!wide.matches) return;
+        const origin = sheet.getBoundingClientRect();
+        const lane = document.querySelector(".c-items").getBoundingClientRect().left - origin.left;
+        pairs.forEach(([fromId, toId, cls], index) => {
+          const from = document.getElementById(fromId).getBoundingClientRect();
+          const to = document.getElementById(toId).getBoundingClientRect();
+          const x1 = from.left - origin.left;
+          const y1 = from.top - origin.top + from.height / 2;
+          const laneX = lane + 4 + index * 5;
+          const above = to.top - origin.top - 3;
+          const across = to.left - origin.left + to.width / 2;
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttribute("d", `M${x1} ${y1} H${laneX} V${above} H${across} V${above + 4}`);
+          path.setAttribute("pathLength", "1");
+          path.setAttribute("class", cls);
+          leaders.appendChild(path);
+        });
+      }
+
+      function track(ms) {
+        cancelAnimationFrame(frame);
+        const end = performance.now() + ms;
+        const tick = () => {
+          drawLeaders();
+          if (performance.now() < end) frame = requestAnimationFrame(tick);
+        };
+        tick();
+      }
 
       function clear() {
         for (const id of timers) clearTimeout(id);
@@ -488,34 +1546,67 @@
 
       function play() {
         clear();
-        editor.className = "editor";
+        sheet.className = "sheet";
+        track(200);
         if (reduced) {
-          editor.classList.add("wrap-memo", "wrap-callback");
+          sheet.classList.add("wrap-memo", "wrap-callback", "wrap-inline", "cleared-on");
+          track(300);
           return;
         }
         let at = 350;
+        let lastAt = at;
         for (const [name, wait] of steps) {
-          const stamp = at;
+          lastAt = at;
           timers.push(
             setTimeout(() => {
-              if (name.startsWith("show-caret")) {
-                editor.classList.remove("show-caret-label", "show-caret-handle", "offer-memo", "offer-callback");
+              if (name.startsWith("caret") || name.startsWith("offer")) {
+                sheet.classList.remove(
+                  "caret-label",
+                  "caret-handle",
+                  "caret-inline",
+                  "offer-memo",
+                  "offer-callback",
+                  "offer-inline",
+                );
               }
-              if (name.startsWith("offer")) {
-                editor.classList.remove("offer-memo", "offer-callback", "show-caret-label", "show-caret-handle");
-              }
-              editor.classList.add(name);
-            }, stamp),
+              sheet.classList.add(name);
+              track(900);
+            }, at),
           );
           at += wait;
         }
-        timers.push(setTimeout(play, at + 700));
+        timers.push(
+          setTimeout(() => {
+            sheet.classList.add("done");
+            placeVeil();
+          }, lastAt + 1800),
+        );
       }
 
-      document.getElementById("again").addEventListener("click", play);
-      window.playDemo = play;
-      window.clearDemo = clear;
-      play();
+      document.getElementById("replay").addEventListener("click", play);
+      document.getElementById("replay-big").addEventListener("click", play);
+      document.getElementById("veil-skip").addEventListener("click", () => {
+        sheet.classList.add("dismissed");
+        document.getElementById("replay").focus({ preventScroll: true });
+      });
+      document.querySelectorAll("[data-copy]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const command = button.parentElement.querySelector("code").textContent;
+          try {
+            await navigator.clipboard.writeText(command);
+            button.textContent = "Copied";
+          } catch {
+            button.textContent = "Select it";
+          }
+          setTimeout(() => (button.textContent = "Copy"), 1600);
+        });
+      });
+      addEventListener("resize", () => track(200));
+      document.fonts.ready.then(() => {
+        drawLeaders();
+        play();
+      });
+      drawLeaders();
     </script>
   </body>
 </html>
