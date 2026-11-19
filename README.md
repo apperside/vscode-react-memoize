@@ -148,9 +148,9 @@ npm run compile
 
 `npm run package` builds the `.vsix`. `npm run compile` writes the extension to `out/`. Launch an Extension Development Host with this folder as the extension path to try a change.
 
-## Support
+## Buy me a coffee
 
-If this saves you time, you can support the project on [Ko-fi](https://ko-fi.com/apperside).
+If this saves you time, you can [buy me a coffee on Ko-fi](https://ko-fi.com/apperside).
 
 ## License
 
