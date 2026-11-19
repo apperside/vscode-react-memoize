@@ -1,7 +1,7 @@
 {
   "name": "vscode-react-memoize",
   "displayName": "vscode-react-memoize",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "description": "Instantly transform variables and function in useMemo and useCallback with tracked dependencies array",
   "categories": [
     "Other"
@@ -11,6 +11,9 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/apperside/vscode-react-memoize.git"
+  },
+  "sponsor": {
+    "url": "https://ko-fi.com/apperside"
   },
   "publisher": "apperside",
   "type": "module",

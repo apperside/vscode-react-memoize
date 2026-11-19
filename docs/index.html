@@ -1076,6 +1076,16 @@
         .narrow {
           grid-template-columns: 1fr;
         }
+        .bar {
+          font-size: 1.05rem;
+        }
+        .bar a {
+          font-size: 0.9rem;
+          white-space: nowrap;
+        }
+        .brand {
+          white-space: nowrap;
+        }
         .hero .id {
           border-width: 2px;
         }
@@ -1180,7 +1190,7 @@
 
       <header class="hero">
         <h1>
-          <span class="code"><b class="id">useMemo</b><i class="and">and</i><b class="id">useCallback</b></span>
+          <span class="code"><i class="and">Extract in</i><b class="id">useMemo</b><i class="and">and</i><b class="id">useCallback</b></span>
           <span class="click">In one click</span>
           <span class="deps">with the dependency array already <span class="end">filled in<span class="point" aria-hidden="true">👈</span></span></span>
         </h1>
@@ -1453,6 +1463,10 @@
                   <dd><code>Cmd+.</code> on macOS, <code>Ctrl+.</code> on Windows and Linux, or run Refactor from the Command Palette</dd>
                 </div>
                 <div>
+                  <dt>Support</dt>
+                  <dd><a href="https://ko-fi.com/apperside">Buy me a coffee on Ko-fi</a></dd>
+                </div>
+                <div>
                   <dt>License</dt>
                   <dd>MIT, <a href="https://github.com/apperside/vscode-react-memoize">source on GitHub</a></dd>
                 </div>
@@ -1607,6 +1621,16 @@
         play();
       });
       drawLeaders();
+    </script>
+
+    <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+    <script>
+      kofiWidgetOverlay.draw("apperside", {
+        type: "floating-chat",
+        "floating-chat.donateButton.text": "Support me",
+        "floating-chat.donateButton.background-color": "#323842",
+        "floating-chat.donateButton.text-color": "#fff",
+      });
     </script>
   </body>
 </html>

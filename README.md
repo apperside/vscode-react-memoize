@@ -107,6 +107,10 @@ npm run compile
 
 `npm run compile` writes the extension to `out/`. Launch an Extension Development Host with this folder as the extension path to try a change.
 
+## Support
+
+If this saves you time, you can support the project on [Ko-fi](https://ko-fi.com/apperside).
+
 ## License
 
 [MIT](LICENSE)
